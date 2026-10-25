@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e0e13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Nada">
+<title>Nada</title>
+<script>
+/* Pilih layout sebelum render supaya tidak berkedip: phone | tablet | desktop (+ class tv) */
+(function () {
+  try {
+    var d = document.documentElement, q = new URLSearchParams(location.search).get('tv'), s = localStorage.getItem('tv');
+    var uaTV = /SMART-?TV|Tizen|Web0S|WebOS|NetCast|HbbTV|BRAVIA|AFTT|AFTM|GoogleTV|Android.*TV|CrKey|Roku|VIDAA/i.test(navigator.userAgent);
+    var tv = q === '1' || (q !== '0' && (s === 'true' || (s === null && uaTV)));
+    var w = window.innerWidth;
+    d.dataset.layout = tv || w >= 1200 ? 'desktop' : w >= 768 ? 'tablet' : 'phone';
+    if (tv) d.classList.add('tv');
+  } catch (e) {}
+})();
+</script>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div id="app">
+  <header class="top">
+    <h1>Nada</h1>
+    <form id="searchForm" role="search">
+      <input id="q" type="search" enterkeyhint="search" autocomplete="off"
+             placeholder="Cari lagu, artis, atau tempel link YouTube">
+    </form>
+  </header>
+
+  <main id="list" class="list" aria-live="polite"></main>
+
+  <button id="mini" class="mini" hidden aria-label="Buka pemutar">
+    <img id="miniArt" alt="">
+    <span class="meta"><b id="miniTitle"></b><small id="miniArtist"></small></span>
+    <span id="miniPlay" class="icon-btn" role="button" aria-label="Putar/Jeda"></span>
+    <span id="miniNext" class="icon-btn" role="button" aria-label="Berikutnya"></span>
+    <i id="miniBar"></i>
+  </button>
+
+  <nav class="tabs">
+    <button data-tab="search" class="on"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/></svg>Cari</button>
+    <button data-tab="fav"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>Favorit</button>
+    <button data-tab="recent"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg>Terakhir</button>
+    <button id="tvToggle" aria-label="Mode TV"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>Mode TV</button>
+  </nav>
+
+  <section id="player" class="sheet" aria-label="Pemutar">
+    <div class="sheet-head">
+      <button id="collapse" class="icon-btn" aria-label="Tutup pemutar"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+      <span>Sedang diputar</span>
+      <span class="icon-btn"></span>
+    </div>
+    <div class="video"><div id="yt"></div></div>
+    <div class="info">
+      <div class="meta"><h2 id="title">Belum ada lagu</h2><p id="artist">Cari lagu lalu tap untuk memutar</p></div>
+      <button id="favBtn" class="icon-btn heart" aria-label="Favorit"><svg viewBox="0 0 24 24"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
+    </div>
+    <div class="seek">
+      <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Posisi lagu">
+      <div class="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
+    </div>
+    <div class="controls">
+      <button id="shuffle" class="icon-btn" aria-label="Acak"><svg viewBox="0 0 24 24"><path d="M3 7h3c5 0 6 10 11 10h4M3 17h3c1.5 0 2.6-.9 3.6-2.2M14.4 9.2C15.4 7.9 16.5 7 18 7h3M18 4l3 3-3 3M18 14l3 3-3 3"/></svg></button>
+      <button id="prev" class="icon-btn" aria-label="Sebelumnya"></button>
+      <button id="play" class="play-btn" aria-label="Putar/Jeda"></button>
+      <button id="next" class="icon-btn" aria-label="Berikutnya"></button>
+      <button id="repeat" class="icon-btn" aria-label="Ulangi"><svg viewBox="0 0 24 24"><path d="M17 3l3 3-3 3M4 11V9a3 3 0 0 1 3-3h13M7 21l-3-3 3-3M20 13v2a3 3 0 0 1-3 3H4"/></svg><em id="repeatOne">1</em></button>
+    </div>
+  </section>
+
+  <div id="tvHint" hidden><span><b>◀ ▲ ▼ ▶</b> Navigasi</span><span><b>OK</b> Putar</span><span><b>F / Kuning</b> Favorit</span><span><b>⏯</b> Jeda</span><span><b>Kembali</b> Menu</span></div>
+  <div id="toast" role="status"></div>
+</div>
+<script src="/app.js"></script>
+<script src="https://www.youtube.com/iframe_api" async></script>
+</body>
+</html>

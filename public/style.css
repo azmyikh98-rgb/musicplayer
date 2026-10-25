@@ -1,0 +1,182 @@
+/* ===== Nada: responsif untuk HP, tablet, desktop, dan TV =====
+   Layout dipilih lewat atribut html[data-layout] = phone | tablet | desktop
+   (diset di <head> dan app.js). Mode TV = layout desktop + class html.tv.
+   Semua ukuran memakai rem supaya mudah diskalakan (TV = font-size besar). */
+
+:root {
+  --bg: #0e0e13;
+  --panel: #17171f;
+  --panel-2: #20202b;
+  --line: #232330;
+  --text: #f3f3f7;
+  --muted: #9a9aad;
+  --accent: #ff4f6d;
+  --accent-2: #ff9a56;
+  --side-w: 0rem;
+  --np-w: 0rem;
+  --tabs-h: 3.625rem;
+  --mini-h: 3.875rem;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+html { font-size: 16px; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body { font: .9375rem/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+#app { height: 100%; display: flex; flex-direction: column; max-width: 45rem; margin: 0 auto; position: relative; }
+
+/* ---------- Header ---------- */
+.top { padding: calc(.875rem + var(--safe-t)) 1rem .625rem; background: linear-gradient(var(--bg) 80%, transparent); position: sticky; top: 0; z-index: 5; }
+.top h1 { margin: 0 0 .625rem; font-size: 1.625rem; letter-spacing: -.03em;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; width: fit-content; }
+#q { width: 100%; padding: .75rem 1rem; border-radius: .875rem; border: 1px solid #2a2a38; background: var(--panel); color: var(--text); font-size: 1rem; outline: none; }
+#q:focus { border-color: var(--accent); }
+
+/* ---------- Daftar lagu ---------- */
+.list { flex: 1; overflow-y: auto; padding: .25rem .5rem calc(var(--tabs-h) + var(--mini-h) + var(--safe-b) + 1.5rem); }
+.row { display: flex; align-items: center; gap: .75rem; padding: .5rem; border-radius: .75rem; cursor: pointer; position: relative; outline: none; }
+.row:active, .row.playing { background: var(--panel); }
+.row img { width: 3.375rem; height: 3.375rem; border-radius: .5rem; object-fit: cover; background: var(--panel-2); flex: none; }
+.row .meta { flex: 1; min-width: 0; }
+.row .meta b, .mini .meta b { display: block; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .meta small, .mini .meta small { color: var(--muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.playing .meta b { color: var(--accent); }
+.heart { width: 2.5rem; height: 2.5rem; display: grid; place-items: center; color: var(--muted); flex: none; }
+.heart.on { color: var(--accent); }
+.heart.on svg { fill: currentColor; }
+.empty { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 3.75rem 1.5rem; }
+.empty b { display: block; color: var(--text); font-size: 1.0625rem; margin-bottom: .375rem; }
+.skeleton { height: 4.375rem; margin: .375rem .5rem; border-radius: .75rem; background: linear-gradient(90deg, var(--panel) 25%, var(--panel-2) 50%, var(--panel) 75%); background-size: 200% 100%; animation: sh 1.2s infinite; }
+@keyframes sh { to { background-position: -200% 0; } }
+
+/* ---------- Navigasi (bawah di HP, sidebar di tablet/desktop) ---------- */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--tabs-h) + var(--safe-b)); padding-bottom: var(--safe-b);
+  display: flex; background: rgba(14,14,19,.94); backdrop-filter: blur(14px); border-top: 1px solid #1f1f2a; z-index: 10; max-width: 45rem; margin: 0 auto; }
+.tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .125rem; font-size: .6875rem; color: var(--muted); border-radius: .75rem; }
+.tabs button.on { color: var(--text); }
+.tabs button.on svg { stroke: var(--accent); }
+#tvToggle { display: none; }
+
+/* ---------- Mini player ---------- */
+.mini { position: fixed; left: .5rem; right: .5rem; bottom: calc(var(--tabs-h) + var(--safe-b) + .375rem); height: var(--mini-h);
+  display: flex; align-items: center; gap: .625rem; padding: .4375rem .5rem; background: var(--panel-2); border-radius: .875rem; z-index: 9; text-align: left;
+  max-width: 44rem; margin: 0 auto; overflow: hidden; box-shadow: 0 .375rem 1.5rem rgba(0,0,0,.5); }
+.mini[hidden] { display: none; }
+.mini img { width: 2.875rem; height: 2.875rem; border-radius: .5rem; object-fit: cover; }
+.mini .meta { flex: 1; min-width: 0; }
+.mini #miniBar { position: absolute; left: 0; bottom: 0; height: .125rem; width: 0; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+
+.icon-btn { width: 2.75rem; height: 2.75rem; display: grid; place-items: center; border-radius: 50%; flex: none; color: var(--text); }
+.icon-btn:active { background: rgba(255,255,255,.08); }
+
+/* ---------- Pemutar penuh ---------- */
+.sheet { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; padding: calc(.5rem + var(--safe-t)) 1.25rem calc(1.25rem + var(--safe-b));
+  background: radial-gradient(120% 60% at 50% 0%, #2a1a2a 0%, var(--bg) 70%); transform: translateY(100%); transition: transform .3s cubic-bezier(.2,.8,.2,1);
+  max-width: 45rem; margin: 0 auto; overflow-y: auto; }
+.sheet.open { transform: none; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .8125rem; text-transform: uppercase; letter-spacing: .06em; }
+.video { margin: .875rem 0 1.375rem; width: 100%; aspect-ratio: 16 / 9; min-height: 12.5rem; border-radius: .875rem; overflow: hidden; background: #000; box-shadow: 0 .75rem 2.5rem rgba(0,0,0,.6); flex: none; }
+.video iframe, .video #yt { width: 100%; height: 100%; display: block; pointer-events: none; }
+.info { display: flex; align-items: center; gap: .5rem; }
+.info .meta { flex: 1; min-width: 0; }
+.info h2 { margin: 0; font-size: 1.25rem; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.info p { margin: .25rem 0 0; color: var(--muted); }
+.seek { margin: 1.25rem 0 .5rem; }
+.times { display: flex; justify-content: space-between; color: var(--muted); font-size: .75rem; margin-top: .25rem; font-variant-numeric: tabular-nums; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 1.75rem; background: transparent; margin: 0; }
+input[type=range]::-webkit-slider-runnable-track { height: .25rem; border-radius: .125rem; background: linear-gradient(90deg, var(--accent) var(--p, 0%), #33333f var(--p, 0%)); }
+input[type=range]::-moz-range-track { height: .25rem; border-radius: .125rem; background: #33333f; }
+input[type=range]::-moz-range-progress { height: .25rem; border-radius: .125rem; background: var(--accent); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 1rem; height: 1rem; border-radius: 50%; background: #fff; margin-top: -.375rem; }
+input[type=range]::-moz-range-thumb { width: 1rem; height: 1rem; border: 0; border-radius: 50%; background: #fff; }
+.controls { display: flex; align-items: center; justify-content: space-between; margin-top: .5rem; }
+.controls .icon-btn { color: var(--muted); position: relative; }
+.controls .icon-btn.on { color: var(--accent); }
+.controls #prev, .controls #next { color: var(--text); }
+.play-btn { width: 4.5rem; height: 4.5rem; border-radius: 50%; display: grid; place-items: center; color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2)); box-shadow: 0 .5rem 1.5rem rgba(255,79,109,.4); }
+.play-btn svg { width: 2rem; height: 2rem; fill: #fff; stroke: none; }
+.controls #prev svg, .controls #next svg, #miniPlay svg, #miniNext svg { fill: currentColor; stroke: none; }
+#repeat em { display: none; position: absolute; font-size: .5625rem; font-style: normal; font-weight: 700; right: .5rem; top: .5rem; }
+#repeat.one em { display: block; }
+
+#toast { position: fixed; left: 50%; bottom: calc(var(--tabs-h) + var(--mini-h) + var(--safe-b) + 1.25rem); transform: translate(-50%, 1.25rem); background: #fff; color: #111;
+  padding: .625rem 1rem; border-radius: 1.375rem; font-size: .875rem; opacity: 0; pointer-events: none; transition: .25s; z-index: 40; max-width: 90%; text-align: center; }
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+.sheet.open ~ #toast { bottom: calc(var(--safe-b) + 1.5rem); }
+
+/* ---------- Fokus (keyboard & remote TV) ---------- */
+.row:focus-visible, .tabs button:focus-visible, .icon-btn:focus-visible, .play-btn:focus-visible, #q:focus-visible, #seek:focus-visible {
+  outline: .1875rem solid #fff; outline-offset: .1875rem; }
+#seek:focus-visible { border-radius: .5rem; }
+
+#tvHint { display: none; }
+
+/* =====================================================================
+   TABLET (768 – 1199px): sidebar ikon di kiri, daftar 2 kolom, pemutar = sheet
+   ===================================================================== */
+html[data-layout="tablet"], html[data-layout="desktop"] { --tabs-h: 0rem; }
+html[data-layout="tablet"] { --side-w: 5.5rem; }
+html[data-layout="desktop"] { --side-w: 15rem; --np-w: 26.25rem; }
+
+html[data-layout="tablet"] #app, html[data-layout="desktop"] #app { max-width: none; margin: 0; padding-left: var(--side-w); padding-right: var(--np-w); }
+
+html[data-layout="tablet"] .top, html[data-layout="desktop"] .top { padding: 1.25rem 1.5rem .75rem; z-index: 11; }
+html[data-layout="tablet"] .top h1, html[data-layout="desktop"] .top h1 { position: fixed; top: 1.375rem; left: 1.25rem; margin: 0; z-index: 11; }
+html[data-layout="tablet"] .top h1 { left: 0; width: var(--side-w); text-align: center; }
+html[data-layout="tablet"] #searchForm, html[data-layout="desktop"] #searchForm { max-width: 36rem; }
+
+html[data-layout="tablet"] .tabs, html[data-layout="desktop"] .tabs {
+  top: 0; right: auto; bottom: 0; width: var(--side-w); height: auto; flex-direction: column; justify-content: flex-start;
+  padding: 5rem .5rem 1rem; border-top: 0; border-right: 1px solid var(--line); max-width: none; margin: 0; gap: .25rem; }
+html[data-layout="tablet"] .tabs button, html[data-layout="desktop"] .tabs button { flex: none; padding: .75rem .25rem; font-size: .75rem; }
+html[data-layout="tablet"] .tabs button.on, html[data-layout="desktop"] .tabs button.on { background: var(--panel); }
+html[data-layout="tablet"] #tvToggle, html[data-layout="desktop"] #tvToggle { display: flex; margin-top: auto; }
+html[data-layout="desktop"] .tabs button { flex-direction: row; justify-content: flex-start; gap: .875rem; padding: .75rem 1rem; font-size: .9375rem; }
+@media (hover: hover) { .tabs button:hover { background: var(--panel); color: var(--text); } }
+
+html[data-layout="tablet"] .list, html[data-layout="desktop"] .list { display: grid; align-content: start; padding: .25rem 1rem calc(var(--mini-h) + 2rem); }
+html[data-layout="tablet"] .list { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .25rem .5rem; padding-left: 1.25rem; padding-right: 1.25rem; }
+html[data-layout="tablet"] .skeleton, html[data-layout="desktop"] .skeleton { margin: .25rem 0; }
+
+html[data-layout="tablet"] .mini { left: calc(var(--side-w) + .75rem); right: .75rem; bottom: .75rem; max-width: none; margin: 0; }
+html[data-layout="tablet"] .sheet { max-width: 40rem; }
+html[data-layout="tablet"] #toast { left: calc(50% + var(--side-w) / 2); bottom: calc(var(--mini-h) + 1.75rem); }
+
+/* =====================================================================
+   DESKTOP (>= 1200px) & TV: sidebar + grid kartu + panel "Sedang diputar"
+   ===================================================================== */
+@media (min-width: 1600px) { html[data-layout="desktop"]:not(.tv) { font-size: 17px; } }
+
+html[data-layout="desktop"] .list { grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); gap: 1.25rem 1rem; padding: 1rem 1.5rem 2rem; }
+html[data-layout="desktop"] .row { flex-direction: column; align-items: stretch; gap: .5rem; padding: .625rem; background: var(--panel); border-radius: 1rem; transition: background .15s, transform .15s; }
+html[data-layout="desktop"] .row img { width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: .625rem; }
+html[data-layout="desktop"] .row .meta { padding: 0 .25rem .25rem; }
+html[data-layout="desktop"] .row .heart { position: absolute; top: 1rem; right: 1rem; width: 2.25rem; height: 2.25rem; background: rgba(14,14,19,.7); border-radius: 50%; opacity: 0; transition: opacity .15s; }
+html[data-layout="desktop"] .row .heart.on, html[data-layout="desktop"] .row:hover .heart, html[data-layout="desktop"] .row:focus-visible .heart { opacity: 1; }
+html[data-layout="desktop"] .row:hover { background: var(--panel-2); }
+html[data-layout="desktop"] .row.playing { background: var(--panel-2); box-shadow: inset 0 0 0 .125rem var(--accent); }
+html[data-layout="desktop"] .mini { display: none !important; }
+html[data-layout="desktop"] #toast { left: calc((100% + var(--side-w) - var(--np-w)) / 2); bottom: 1.5rem; }
+
+html[data-layout="desktop"] .sheet { inset: 0 0 0 auto; width: var(--np-w); max-width: none; margin: 0; transform: none; transition: none; z-index: 8;
+  background: #12121a; border-left: 1px solid var(--line); padding: calc(1.25rem + var(--safe-t)) 1.25rem 1.5rem; }
+html[data-layout="desktop"] #collapse { visibility: hidden; }
+
+/* =====================================================================
+   TV (10-foot UI): skala besar, fokus jelas, navigasi D-pad
+   ===================================================================== */
+html.tv { font-size: 26px; --side-w: 12rem; --np-w: 21rem; }
+html.tv .list { grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); padding-bottom: 4rem; }
+html.tv .row .heart { opacity: 0; }
+html.tv .row .heart.on { opacity: 1; }
+html.tv .row:focus-visible { transform: scale(1.05); z-index: 2; box-shadow: 0 .75rem 2rem rgba(0,0,0,.65); outline-offset: .125rem; }
+html.tv #tvToggle.on { color: var(--accent); }
+html.tv #tvHint { display: flex; position: fixed; left: calc(var(--side-w) + 1.5rem); bottom: .75rem; gap: 1.25rem; z-index: 30;
+  font-size: .75rem; color: var(--muted); background: rgba(14,14,19,.9); padding: .35rem .9rem; border-radius: 1rem; }
+html.tv #tvHint b { color: var(--text); font-weight: 600; }
+html.tv .tabs button { padding: .9rem 1rem; }
+html.tv ::-webkit-scrollbar { display: none; }
