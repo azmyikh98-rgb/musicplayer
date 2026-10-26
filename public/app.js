@@ -130,7 +130,7 @@ function cardHTML(t, i, ctx, rank) {
 
 const section = (title, inner, seeAll) =>
   `<section class="sec"><div class="sec-head"><h2>${title}</h2>${seeAll ? `<button class="link" data-nav data-open="${seeAll}">Lihat semua</button>` : ''}</div>${inner}</section>`;
-const hscroll = (items) => `<div class="hscroll">${items.join('')}</div>`;
+const hscroll = (items) => `<div class="hs"><button class="hs-btn l" data-hs="-1" tabindex="-1" aria-label="Geser ke kiri">‹</button><div class="hscroll">${items.join('')}</div><button class="hs-btn r" data-hs="1" tabindex="-1" aria-label="Geser ke kanan">›</button></div>`;
 
 function artistsSection() {
   const chips = [`<div class="artist add" data-nav tabindex="0" role="button" data-manageart aria-label="Tambah artis"><div class="av">${ICON.plus}</div><b>Tambah</b></div>`];
@@ -242,7 +242,7 @@ function searchHTML() {
 function libraryHTML() {
   const lib = (attrs, ico, g, title, sub) =>
     `<button class="lib" data-nav ${attrs}><span class="ico${g ? ' g' : ''}">${ico}</span><span><b>${title}</b><small>${sub}</small></span></button>`;
-  let out = '<div class="home">';
+  let out = '<div class="home libp">';
   out += lib('data-open="liked"', ICON.heart, true, 'Liked Songs', `${state.fav.length} lagu`);
   out += lib('data-open="recent"', ICON.clock, false, 'Terakhir diputar', `${state.recent.length} lagu`);
   out += lib('data-open="chartID"', ICON.list, false, 'Tangga Lagu Indonesia', 'Musik terpopuler di Indonesia');
@@ -304,9 +304,21 @@ function markPlaying() {
   document.querySelectorAll('#list [data-id]').forEach((n) => n.classList.toggle('playing', n.dataset.id === id));
 }
 
+function renderUpnext() {
+  const el = $('#upnext'), t = current();
+  if (!t) { el.innerHTML = ''; return; }
+  const q = state.queue, next = [];
+  for (let i = state.idx + 1; i < q.length && next.length < 8; i++) next.push(i);
+  if (!next.length) { el.innerHTML = ''; return; }
+  el.innerHTML = `<h3>Berikutnya${state.shuffle ? ' <small>(urutan acak aktif)</small>' : ''}</h3>` + next.map((i) =>
+    `<div class="up" data-nav tabindex="0" role="button" data-upi="${i}" aria-label="Putar ${esc(q[i].title)}"><img src="${imgOf(q[i])}" alt="" loading="lazy"><span class="meta"><b>${esc(q[i].title)}</b><small>${esc(q[i].artist)}</small></span></div>`).join('');
+}
+
 function renderPlayer() {
   const t = current();
   $('#mini').hidden = !t;
+  $('#player').classList.toggle('idle', !t);
+  renderUpnext();
   if (!t) return;
   $('#title').textContent = t.title;
   $('#artist').textContent = t.artist;
@@ -725,10 +737,10 @@ async function ensureLyrics() {
   const t = current(); if (!t) { renderLyrics(); return; }
   if (state.lyr.id === t.id && state.lyr.status !== 'idle' && state.lyr.status !== 'err') { return; }
   const hit = lyrCache.get(t.id);
-  if (hit) { state.lyr = { id: t.id, ...hit, active: -1 }; renderLyrics(); $('#stage').scrollTop = 0; return; }
+  if (hit) { state.lyr = { id: t.id, ...hit, active: -1 }; renderLyrics(); { $('#stage').scrollTop = 0; $('#lyrics').scrollTop = 0; } return; }
   const my = ++lyrReq;
   state.lyr = { id: t.id, status: 'loading', synced: [], plain: '', src: '', active: -1 };
-  renderLyrics(); $('#stage').scrollTop = 0;
+  renderLyrics(); { $('#stage').scrollTop = 0; $('#lyrics').scrollTop = 0; }
   const dur = ytReady && yt.getDuration ? Math.round(yt.getDuration() || 0) : 0;
   try {
     const r = await fetch(`/api/lyrics?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}${dur ? '&dur=' + dur : ''}`);
@@ -757,13 +769,13 @@ function lyricsTick(cur) {
   let lo = 0, hi = L.synced.length - 1, idx = -1;
   while (lo <= hi) { const m = (lo + hi) >> 1; if (L.synced[m][0] <= x) { idx = m; lo = m + 1; } else hi = m - 1; }
   if (idx === L.active) return;
-  const el = $('#lyrics'), sc = $('#stage');
+  const el = $('#lyrics'), own = getComputedStyle(el).overflowY === 'auto', sc = own ? el : $('#stage');
   el.querySelector('p.on')?.classList.remove('on');
   L.active = idx;
   const p = idx >= 0 ? el.querySelector(`[data-ly="${idx}"]`) : null;
   if (!p) return;
   p.classList.add('on');
-  if (Date.now() - lyrUser > 4000) sc.scrollTo({ top: Math.max(0, el.offsetTop + p.offsetTop - sc.clientHeight / 2 + p.offsetHeight / 2), behavior: 'smooth' });
+  if (Date.now() - lyrUser > 4000) sc.scrollTo({ top: Math.max(0, (own ? 0 : el.offsetTop) + p.offsetTop - sc.clientHeight / 2 + p.offsetHeight / 2), behavior: 'smooth' });
 }
 
 /* progres */
@@ -841,6 +853,7 @@ $('#officialBtn').addEventListener('click', () => {
 
 $('#list').addEventListener('click', (e) => {
   const t = e.target; let el;
+  if ((el = t.closest('[data-hs]'))) { const sc = el.parentElement.querySelector('.hscroll'); sc.scrollBy({ left: +el.dataset.hs * sc.clientWidth * 0.8, behavior: 'smooth' }); return; }
   if ((el = t.closest('[data-like]'))) { const [c, i] = splitRef(el.dataset.like); toggleFav(ctxTracks(c)[i]); return; }
   if ((el = t.closest('[data-more]'))) { const [c, i] = splitRef(el.dataset.more); const tr = ctxTracks(c)[i]; if (tr) openMenu(tr, c); return; }
   if ((el = t.closest('[data-play]'))) { playList(ctxTracks(el.dataset.play), +el.dataset.i); return; }
@@ -870,6 +883,10 @@ $('#mini').addEventListener('click', (e) => {
   if (e.target.closest('#miniNext')) return next();
   $('#player').classList.add('open');
 });
+$('#upnext').addEventListener('click', (e) => {
+  const el = e.target.closest('[data-upi]'); if (!el) return;
+  state.idx = +el.dataset.upi; load(0);
+});
 $('#pvVideo').addEventListener('click', () => setPview('video'));
 $('#pvLyrics').addEventListener('click', () => setPview('lyrics'));
 $('#lyrics').addEventListener('click', (e) => {
@@ -878,7 +895,7 @@ $('#lyrics').addEventListener('click', (e) => {
     const id = current().id, v = Math.round(((lyrOffs[id] || 0) + parseFloat(ob.dataset.lyoff)) * 10) / 10;
     if (v) lyrOffs[id] = v; else delete lyrOffs[id];
     const keys = Object.keys(lyrOffs); if (keys.length > 60) delete lyrOffs[keys[0]];
-    store.set('lyrOffs', lyrOffs); const top = $('#stage').scrollTop; renderLyrics(); $('#stage').scrollTop = top; state.lyr.active = -1; return;
+    store.set('lyrOffs', lyrOffs); const top = $('#stage').scrollTop, top2 = $('#lyrics').scrollTop; renderLyrics(); $('#stage').scrollTop = top; $('#lyrics').scrollTop = top2; state.lyr.active = -1; return;
   }
   const p = e.target.closest('[data-t]'); if (!p || !ytReady) return;
   lyrUser = 0; yt.seekTo(parseFloat(p.dataset.t), true);
@@ -937,7 +954,7 @@ function seekBy(sec) {
 const visible = (el) => el.getClientRects().length > 0;
 function focusables() {
   if (!$('#menu').hidden) return [...document.querySelectorAll('#menu button, #menu input')].filter(visible);
-  return [...document.querySelectorAll('.tabs button, #q, #officialBtn, #suggest button, #list [data-nav], #pvVideo, #pvLyrics, #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
+  return [...document.querySelectorAll('.tabs button, #q, #officialBtn, #suggest button, #list [data-nav], #pvVideo, #pvLyrics, #upnext [data-nav], #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
 }
 
 // Navigasi spasial: pindah fokus ke elemen terdekat pada arah panah
