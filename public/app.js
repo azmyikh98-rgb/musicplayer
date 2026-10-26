@@ -725,10 +725,10 @@ async function ensureLyrics() {
   const t = current(); if (!t) { renderLyrics(); return; }
   if (state.lyr.id === t.id && state.lyr.status !== 'idle' && state.lyr.status !== 'err') { return; }
   const hit = lyrCache.get(t.id);
-  if (hit) { state.lyr = { id: t.id, ...hit, active: -1 }; renderLyrics(); $('#lyrics').scrollTop = 0; return; }
+  if (hit) { state.lyr = { id: t.id, ...hit, active: -1 }; renderLyrics(); $('#stage').scrollTop = 0; return; }
   const my = ++lyrReq;
   state.lyr = { id: t.id, status: 'loading', synced: [], plain: '', src: '', active: -1 };
-  renderLyrics(); $('#lyrics').scrollTop = 0;
+  renderLyrics(); $('#stage').scrollTop = 0;
   const dur = ytReady && yt.getDuration ? Math.round(yt.getDuration() || 0) : 0;
   try {
     const r = await fetch(`/api/lyrics?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}${dur ? '&dur=' + dur : ''}`);
@@ -757,13 +757,13 @@ function lyricsTick(cur) {
   let lo = 0, hi = L.synced.length - 1, idx = -1;
   while (lo <= hi) { const m = (lo + hi) >> 1; if (L.synced[m][0] <= x) { idx = m; lo = m + 1; } else hi = m - 1; }
   if (idx === L.active) return;
-  const el = $('#lyrics');
+  const el = $('#lyrics'), sc = $('#stage');
   el.querySelector('p.on')?.classList.remove('on');
   L.active = idx;
   const p = idx >= 0 ? el.querySelector(`[data-ly="${idx}"]`) : null;
   if (!p) return;
   p.classList.add('on');
-  if (Date.now() - lyrUser > 4000) el.scrollTo({ top: Math.max(0, p.offsetTop - el.clientHeight / 2 + p.offsetHeight / 2), behavior: 'smooth' });
+  if (Date.now() - lyrUser > 4000) sc.scrollTo({ top: Math.max(0, el.offsetTop + p.offsetTop - sc.clientHeight / 2 + p.offsetHeight / 2), behavior: 'smooth' });
 }
 
 /* progres */
@@ -878,12 +878,12 @@ $('#lyrics').addEventListener('click', (e) => {
     const id = current().id, v = Math.round(((lyrOffs[id] || 0) + parseFloat(ob.dataset.lyoff)) * 10) / 10;
     if (v) lyrOffs[id] = v; else delete lyrOffs[id];
     const keys = Object.keys(lyrOffs); if (keys.length > 60) delete lyrOffs[keys[0]];
-    store.set('lyrOffs', lyrOffs); const top = $('#lyrics').scrollTop; renderLyrics(); $('#lyrics').scrollTop = top; state.lyr.active = -1; return;
+    store.set('lyrOffs', lyrOffs); const top = $('#stage').scrollTop; renderLyrics(); $('#stage').scrollTop = top; state.lyr.active = -1; return;
   }
   const p = e.target.closest('[data-t]'); if (!p || !ytReady) return;
   lyrUser = 0; yt.seekTo(parseFloat(p.dataset.t), true);
 });
-['wheel', 'touchmove'].forEach((ev) => $('#lyrics').addEventListener(ev, () => { lyrUser = Date.now(); }, { passive: true }));
+['wheel', 'touchmove'].forEach((ev) => $('#stage').addEventListener(ev, () => { lyrUser = Date.now(); }, { passive: true }));
 $('#collapse').addEventListener('click', () => $('#player').classList.remove('open'));
 $('#play').addEventListener('click', toggle);
 $('#next').addEventListener('click', () => next());

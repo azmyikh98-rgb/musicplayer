@@ -329,8 +329,7 @@ html.tv .artist.pop { width: 8rem; } html.tv .fol { font-size: .8125rem; }
 .sheet[data-pview="lyrics"] .video { margin-bottom: .5rem; }
 .info h2 { font-size: 1.375rem; }
 .controls { margin: .5rem 0 .25rem; }
-.lyrics { position: relative; flex: 1 1 0; min-height: 9rem; overflow-y: auto; scrollbar-width: none; scroll-behavior: smooth; padding: 1.25rem .25rem 1.5rem;
-  -webkit-mask-image: linear-gradient(transparent 0, #000 10%, #000 90%, transparent 100%); mask-image: linear-gradient(transparent 0, #000 10%, #000 90%, transparent 100%); }
+.lyrics { position: relative; flex: none; padding: .75rem .25rem 2rem; }
 .lyrics::-webkit-scrollbar { display: none; }
 .lyrics p { margin: 0; padding: .375rem 0; font-size: 1.375rem; line-height: 1.3; font-weight: 700; color: rgba(255,255,255,.3); cursor: pointer; transition: color .3s, transform .3s; transform-origin: left center; overflow-wrap: anywhere; }
 .lyrics p.on { color: #fff; transform: scale(1.04); }
@@ -361,3 +360,21 @@ html.tv .sheet[data-pview="lyrics"] .lyrics { min-height: 5rem; }
 html.tv .info h2 { font-size: 1.125rem; }
 html.tv .seek { margin: .5rem 0 0; }
 html.tv .sheet[data-pview="lyrics"] .info { display: none; }
+
+/* Video dan lirik satu halaman geser: video bergeser keluar saat lirik digulir */
+.stage { display: flex; flex-direction: column; flex: 1 1 0; min-height: 0; }
+.sheet[data-pview="video"] .info { margin-top: 0; }
+.sheet[data-pview="lyrics"] .stage { display: block; overflow-y: auto; overscroll-behavior: contain; scroll-behavior: smooth; scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(#000 0, #000 90%, transparent 100%); mask-image: linear-gradient(#000 0, #000 90%, transparent 100%); }
+.sheet[data-pview="lyrics"] .stage::-webkit-scrollbar { display: none; }
+.sheet[data-pview="lyrics"] .video { margin: .5rem 0 .25rem; }
+/* mode Lirik: bagian bawah dibuat ringkas supaya lirik lebih luas */
+.sheet[data-pview="lyrics"] .info h2 { font-size: 1.0625rem; -webkit-line-clamp: 1; }
+.sheet[data-pview="lyrics"] .info p { margin-top: .125rem; font-size: .8125rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet[data-pview="lyrics"] .info { padding-top: .5rem; }
+.sheet[data-pview="lyrics"] .seek { margin: .25rem 0 0; }
+.sheet[data-pview="lyrics"] .times { margin-top: 0; }
+.sheet[data-pview="lyrics"] .controls { margin: .125rem 0 0; }
+.sheet[data-pview="lyrics"] .play-btn { width: 3.75rem; height: 3.75rem; }
+.sheet[data-pview="lyrics"] .pview { margin-top: .25rem; }
+html.tv .sheet[data-pview="lyrics"] .stage { scroll-behavior: auto; }
