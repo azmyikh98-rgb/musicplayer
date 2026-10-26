@@ -134,13 +134,31 @@ function artistsSection() {
   const chips = [`<div class="artist add" data-nav tabindex="0" role="button" data-manageart aria-label="Tambah artis"><div class="av">${ICON.plus}</div><b>Tambah</b></div>`];
   state.artists.forEach((a) => chips.push(
     `<div class="artist" data-nav tabindex="0" role="button" data-artist="${esc(a.name)}" aria-label="Cari lagu ${esc(a.name)}">${avatar(a)}<b>${esc(a.name)}</b></div>`));
-  const rest = STARTER_ARTISTS.filter((n) => !isFollowing(n)).slice(0, 10);
-  const sug = (state.artists.length < 10 ? rest : []).map((n) =>
-    `<div class="artist" data-nav tabindex="0" role="button" data-followart="${esc(n)}" aria-label="Ikuti ${esc(n)}">${avatar({ name: n })}<b>${esc(n)}</b><small>Ikuti</small></div>`);
-  let body;
-  if (!state.artists.length) body = '<p class="hint">Pilih artis favoritmu, atau tap Tambah untuk mengetik namanya.</p>' + hscroll(chips.concat(sug));
-  else body = hscroll(chips) + (sug.length ? '<p class="hint sug">Saran untuk kamu</p>' + hscroll(sug) : '');
+  const body = hscroll(chips) + (state.artists.length ? '' : '<p class="hint">Ikuti artis dari daftar Artis Populer di bawah, atau tap Tambah untuk mengetik namanya.</p>');
   return `<section class="sec"><div class="sec-head"><h2>Artis Favorit</h2><button class="link" data-nav data-manageart>Kelola</button></div>${body}</section>`;
+}
+
+/* Artis populer: dihitung dari tangga lagu (lengkap dengan foto), cadangan daftar bawaan */
+function popularArtists() {
+  const seen = new Map();
+  for (const key of ['ID', 'GLOBAL']) (state.charts[key] || []).forEach((t, i) => {
+    const n = (t.artist || '').split(/\s*(?:,|&| feat\.?| ft\.?| x )\s*/i)[0].trim();
+    if (!n || n.length > 40) return;
+    const k = lc(n), e = seen.get(k) || { name: n, thumb: t.thumb || thumb(t.id), score: 0 };
+    e.score += 100 - i; seen.set(k, e);
+  });
+  let list = [...seen.values()].sort((x, y) => y.score - x.score).slice(0, 14);
+  if (list.length < 8) STARTER_ARTISTS.forEach((n) => { if (!list.some((e) => lc(e.name) === lc(n))) list.push({ name: n, thumb: '' }); });
+  return list.slice(0, 14);
+}
+
+function popularSection() {
+  const cards = popularArtists().map((a) => {
+    const f = isFollowing(a.name);
+    return `<div class="artist pop" data-nav tabindex="0" role="button" data-artist="${esc(a.name)}" aria-label="Cari lagu ${esc(a.name)}">${avatar(a)}<b>${esc(a.name)}</b>
+      <button class="fol${f ? ' on' : ''}" data-followart="${esc(a.name)}" tabindex="-1" aria-label="${f ? 'Berhenti mengikuti' : 'Ikuti'} ${esc(a.name)}">${f ? 'Diikuti' : '+ Ikuti'}</button></div>`;
+  });
+  return `<section class="sec"><div class="sec-head"><h2>Artis Populer</h2></div>${hscroll(cards)}</section>`;
 }
 
 function quickTile(attrs, ico, g, title, sub) {
@@ -190,6 +208,7 @@ function homeHTML() {
 
   // 4. artis
   out += artistsSection();
+  out += popularSection();
 
   // 5. playlist, selalu ada kartu "Playlist baru"
   const plCards = state.playlists.map((p) => {
@@ -740,9 +759,9 @@ $('#list').addEventListener('click', (e) => {
   if (t.closest('[data-focussearch]')) { $('#q').focus(); return; }
   if ((el = t.closest('[data-open]'))) { openView(el.dataset.open); return; }
   if ((el = t.closest('[data-pl]'))) { openView('pl:' + el.dataset.pl); return; }
-  if ((el = t.closest('[data-artist]'))) { runSearch(el.dataset.artist); return; }
   if (t.closest('[data-manageart]')) { openMenu(null, null, 'artists'); return; }
-  if ((el = t.closest('[data-followart]'))) { followArtist(el.dataset.followart); render(); return; }
+  if ((el = t.closest('[data-followart]'))) { const n = el.dataset.followart; if (isFollowing(n)) { unfollowArtist(n); } else followArtist(n, el.closest('.artist')?.querySelector('img')?.src || ''); render(); return; }
+  if ((el = t.closest('[data-artist]'))) { runSearch(el.dataset.artist); return; }
   if (t.closest('[data-newpl]')) { openMenu(null, null, 'newpl'); return; }
   if (t.closest('[data-resume]')) { resume(); return; }
   if (t.closest('[data-back]')) { closeView(); return; }
