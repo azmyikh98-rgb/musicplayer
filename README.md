@@ -5,6 +5,7 @@ Pemutar musik berbasis YouTube yang bisa di-install ke layar utama HP, tablet, d
 ## Fitur
 
 - **Beranda**: Lanjutkan mendengarkan, Terakhir diputar, Liked Songs, My Playlist, Artis Favorit, Tangga Lagu Indonesia, Tangga Lagu Global.
+- **Artis Favorit**: tap **Tambah** untuk memilih dari saran atau mengetik nama artis sendiri, tap **Kelola** untuk berhenti mengikuti. Tap nama artis untuk mencari lagu-lagunya. Foto artis terisi otomatis setelah kamu memutar lagunya.
 - **Cari**: saran muncul saat mengetik, filter **Resmi** (menyaring reupload, lirik, cover, slowed), atau tempel link YouTube / YouTube Music.
 - **Pustaka**: semua daftar di atas dalam satu tempat.
 - **Menu lagu** (ikon titik tiga): suka, tambah ke playlist, ikuti artis, cari lagu dari artis.

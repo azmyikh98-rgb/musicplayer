@@ -17,6 +17,11 @@ const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return `${Math.floor(s
 const thumb = (id) => `https://i.ytimg.com/vi/${id}/mqdefault.jpg`;
 const uid = () => 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
 const lc = (s) => (s || '').toLowerCase();
+const STARTER_ARTISTS = ['Tulus', 'Hindia', 'Mahalini', 'Raim Laode', 'Bernadya', 'Fourtwnty', 'Nadin Amizah', 'Andmesh', 'Juicy Luicy', 'Sheila on 7', 'Dewa 19', 'NOAH', 'Raisa', 'Isyana Sarasvati', 'Weird Genius', 'The Weeknd', 'Taylor Swift', 'Coldplay'];
+const artHue = (s) => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) % 360; return h; };
+const avatar = (a) => a.thumb
+  ? `<div class="av"><img src="${esc(a.thumb)}" alt="" loading="lazy"></div>`
+  : `<div class="av" style="background:linear-gradient(135deg,hsl(${artHue(a.name)},65%,55%),hsl(${(artHue(a.name) + 40) % 360},65%,35%))">${esc(a.name.charAt(0).toUpperCase())}</div>`;
 
 const ICON = {
   play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
@@ -32,8 +37,7 @@ const ICON = {
   list: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h9"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg>',
-  trash: '<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',
-};
+  trash: '<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',};
 
 /* ---------- state ---------- */
 function detectTV() {
@@ -134,6 +138,22 @@ function chartSection(key, title) {
   return section(title, inner, items && items.length ? 'chart' + key : '');
 }
 
+function artistsSection() {
+  const chips = [`<div class="artist add" data-nav tabindex="0" role="button" data-manageart aria-label="Tambah artis"><div class="av">${ICON.plus}</div><b>Tambah</b></div>`];
+  state.artists.forEach((a) => chips.push(
+    `<div class="artist" data-nav tabindex="0" role="button" data-artist="${esc(a.name)}" aria-label="Cari lagu ${esc(a.name)}">${avatar(a)}<b>${esc(a.name)}</b></div>`));
+  let extra = '';
+  const rest = STARTER_ARTISTS.filter((n) => !isFollowing(n)).slice(0, 10);
+  if (rest.length && state.artists.length < 10) {
+    const sug = rest.map((n) =>
+      `<div class="artist" data-nav tabindex="0" role="button" data-followart="${esc(n)}" aria-label="Ikuti ${esc(n)}">${avatar({ name: n })}<b>${esc(n)}</b><small>Ikuti</small></div>`);
+    extra = (state.artists.length
+      ? '<p class="hint sug">Saran untuk kamu</p>'
+      : '<p class="hint">Pilih artis favoritmu di bawah, atau tap Tambah untuk mengetik namanya sendiri.</p>') + hscroll(sug);
+  }
+  return `<section class="sec"><div class="sec-head"><h2>Artis Favorit</h2><button class="link" data-nav data-manageart>Kelola</button></div>${hscroll(chips)}${extra}</section>`;
+}
+
 function homeHTML() {
   const h = new Date().getHours();
   const greet = h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam';
@@ -166,11 +186,7 @@ function homeHTML() {
   plCards.unshift(`<div class="card new" data-nav tabindex="0" role="button" data-newpl aria-label="Buat playlist baru"><div class="cover">${ICON.plus}</div><b>Playlist baru</b><small>Buat sendiri</small></div>`);
   out += section('My Playlist', hscroll(plCards));
 
-  out += section('Artis Favorit',
-    state.artists.length
-      ? hscroll(state.artists.map((a) => `<div class="artist" data-nav tabindex="0" role="button" data-artist="${esc(a.name)}" aria-label="Cari lagu ${esc(a.name)}">
-          <div class="av">${a.thumb ? `<img src="${esc(a.thumb)}" alt="" loading="lazy">` : esc(a.name.charAt(0).toUpperCase())}</div><b>${esc(a.name)}</b></div>`))
-      : empty('Ikuti artis lewat menu titik tiga pada lagu.'));
+  out += artistsSection();
 
   out += chartSection('ID', 'Tangga Lagu Indonesia');
   out += chartSection('GLOBAL', 'Tangga Lagu Global');
@@ -198,9 +214,10 @@ function libraryHTML() {
   out += lib('data-newpl', ICON.plus, false, 'Buat playlist baru', 'Kumpulkan lagu pilihanmu');
   out += state.playlists.map((p) => lib(`data-pl="${p.id}"`, ICON.list, false, esc(p.name), `${p.tracks.length} lagu`)).join('');
   out += '<div class="lib-h">Artis favorit</div>';
+  out += lib('data-manageart', ICON.plus, false, 'Tambah / kelola artis', 'Ikuti artis favoritmu');
   out += state.artists.length
     ? state.artists.map((a) => lib(`data-artist="${esc(a.name)}"`, ICON.user, false, esc(a.name), 'Cari lagu artis ini')).join('')
-    : empty('Ikuti artis lewat menu titik tiga pada lagu.');
+    : '';
   return out + '</div>';
 }
 
@@ -231,7 +248,7 @@ function render() {
   // jaga posisi geser carousel dan fokus (penting untuk remote TV)
   const scrolls = [...el.querySelectorAll('.hscroll')].map((h) => h.scrollLeft);
   const f = el.contains(document.activeElement) ? document.activeElement.closest('[data-nav]') : null;
-  const fKey = f ? { play: f.dataset.play, i: f.dataset.i, sel: ['data-open', 'data-pl', 'data-artist', 'data-newpl', 'data-resume', 'data-back', 'data-playall', 'data-delpl'].find((a) => f.hasAttribute(a)) } : null;
+  const fKey = f ? { play: f.dataset.play, i: f.dataset.i, sel: ['data-open', 'data-pl', 'data-artist', 'data-manageart', 'data-followart', 'data-newpl', 'data-resume', 'data-back', 'data-playall', 'data-delpl'].find((a) => f.hasAttribute(a)) } : null;
   const fVal = fKey && fKey.sel ? f.getAttribute(fKey.sel) : null;
 
   el.innerHTML = state.view ? viewHTML() : state.tab === 'home' ? homeHTML() : state.tab === 'library' ? libraryHTML() : searchHTML();
@@ -342,6 +359,7 @@ async function search(q) {
       }
     }
     store.set('lastResults', state.results);
+    state.results.forEach(backfillArtist);
   } catch (e) {
     state.error = e.message || 'Terjadi kesalahan.';
   }
@@ -399,6 +417,20 @@ function toggleFav(t) {
   render(); renderPlayer();
 }
 
+function followArtist(name, thumbUrl = '') {
+  name = name.trim().slice(0, 40);
+  if (!name || isFollowing(name)) { if (name) toast(`${name} sudah diikuti`); return false; }
+  state.artists = [{ name, thumb: thumbUrl }, ...state.artists];
+  store.set('artists', state.artists);
+  toast(`Mengikuti ${name}`);
+  return true;
+}
+function unfollowArtist(name) {
+  state.artists = state.artists.filter((a) => lc(a.name) !== lc(name));
+  store.set('artists', state.artists);
+  toast(`Berhenti mengikuti ${name}`);
+}
+
 function toggleArtist(t) {
   if (isFollowing(t.artist)) {
     state.artists = state.artists.filter((a) => lc(a.name) !== lc(t.artist));
@@ -408,6 +440,12 @@ function toggleArtist(t) {
     toast(`Mengikuti ${t.artist}`);
   }
   store.set('artists', state.artists);
+}
+
+// isi foto artis dari lagu yang sama (tanpa biaya kuota)
+function backfillArtist(t) {
+  const a = state.artists.find((x) => !x.thumb && lc(x.name) === lc(t.artist));
+  if (a) { a.thumb = t.thumb || thumb(t.id); store.set('artists', state.artists); }
 }
 
 function addToPlaylist(pid, t) {
@@ -427,7 +465,7 @@ function openMenu(track, ctx, mode) {
   mctx = { track, ctx, mode: mode || (track ? 'main' : 'newpl') };
   renderMenu();
   $('#menu').hidden = false;
-  (mctx.mode === 'newpl' ? $('#plName') : $('#menuBody button'))?.focus();
+  (mctx.mode === 'newpl' ? $('#plName') : mctx.mode === 'artists' ? $('#artName') : $('#menuBody button'))?.focus();
 }
 function closeMenu() { $('#menu').hidden = true; mctx = null; }
 
@@ -447,6 +485,12 @@ function renderMenu() {
     h += '<div class="sub">Pilih playlist</div>';
     h += state.playlists.map((p) => act('addpl', ICON.list, p.name, p.tracks.some((x) => x.id === track.id), `data-pid="${p.id}"`)).join('');
     h += newPlForm + act('backmain', ICON.back, 'Kembali');
+  } else if (mode === 'artists') {
+    h += '<div class="sub">Tambah artis favorit</div><form id="artForm"><input id="artName" type="text" maxlength="40" placeholder="Nama artis" aria-label="Nama artis"><button class="pill" type="submit">Tambah</button></form>';
+    const sug = STARTER_ARTISTS.filter((n) => !isFollowing(n)).slice(0, 8);
+    if (sug.length) h += '<div class="sub">Saran</div>' + sug.map((n) => act('addart', ICON.plus, n, false, `data-name="${esc(n)}"`)).join('');
+    if (state.artists.length) h += '<div class="sub">Diikuti (tap untuk berhenti mengikuti)</div>' + state.artists.map((a) => act('delart', ICON.trash, a.name, true, `data-name="${esc(a.name)}"`)).join('');
+    h += act('close', ICON.back, 'Selesai');
   } else {
     h += '<div class="sub">Buat playlist</div>' + newPlForm + act('close', ICON.back, 'Tutup');
   }
@@ -458,7 +502,9 @@ $('#menu').addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]');
   if (!b || !mctx) return;
   const { track, ctx } = mctx, a = b.dataset.act;
-  if (a === 'close') closeMenu();
+  if (a === 'close') { closeMenu(); render(); }
+  else if (a === 'addart') { followArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
+  else if (a === 'delart') { unfollowArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
   else if (a === 'like') { toggleFav(track); closeMenu(); }
   else if (a === 'toplaylist') { mctx.mode = 'pl'; renderMenu(); $('#menuBody button')?.focus(); }
   else if (a === 'backmain') { mctx.mode = 'main'; renderMenu(); $('#menuBody button')?.focus(); }
@@ -474,6 +520,12 @@ $('#menu').addEventListener('click', (e) => {
 
 $('#menu').addEventListener('submit', (e) => {
   e.preventDefault();
+  if (e.target.id === 'artForm') {
+    const n = $('#artName').value;
+    if (followArtist(n)) { renderMenu(); render(); }
+    $('#artName')?.focus();
+    return;
+  }
   const name = $('#plName').value.trim();
   if (!name) return;
   const p = { id: uid(), name, tracks: [] };
@@ -545,6 +597,7 @@ function load(start = 0) {
   if (ytReady) yt.loadVideoById({ videoId: t.id, startSeconds: start }); else pending = { id: t.id, start };
   state.recent = [slim(t), ...state.recent.filter((x) => x.id !== t.id)].slice(0, 50);
   store.set('recent', state.recent);
+  backfillArtist(t);
   renderPlayer(); renderControls(); markPlaying(); updateMediaSession();
   $('#seek').value = 0; $('#seek').style.setProperty('--p', '0%');
 }
@@ -670,6 +723,8 @@ $('#list').addEventListener('click', (e) => {
   if ((el = t.closest('[data-open]'))) { openView(el.dataset.open); return; }
   if ((el = t.closest('[data-pl]'))) { openView('pl:' + el.dataset.pl); return; }
   if ((el = t.closest('[data-artist]'))) { runSearch(el.dataset.artist); return; }
+  if (t.closest('[data-manageart]')) { openMenu(null, null, 'artists'); return; }
+  if ((el = t.closest('[data-followart]'))) { followArtist(el.dataset.followart); render(); return; }
   if (t.closest('[data-newpl]')) { openMenu(null, null, 'newpl'); return; }
   if (t.closest('[data-resume]')) { resume(); return; }
   if (t.closest('[data-back]')) { closeView(); return; }

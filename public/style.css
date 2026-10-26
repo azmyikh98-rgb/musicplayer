@@ -100,6 +100,9 @@ svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-wi
 .artist { flex: none; width: 5.5rem; text-align: center; cursor: pointer; outline: none; border-radius: .75rem; padding: .25rem; }
 .artist .av { width: 4.5rem; height: 4.5rem; margin: 0 auto; border-radius: 50%; overflow: hidden; display: grid; place-items: center; font-size: 1.5rem; font-weight: 700; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #fff; }
 .artist .av img { width: 100%; height: 100%; object-fit: cover; }
+.artist.add .av { background: transparent; border: 2px dashed #33333f; color: var(--muted); }
+.artist.add .av svg { width: 1.75rem; height: 1.75rem; }
+.artist small { display: block; color: var(--accent); font-size: .6875rem; font-weight: 600; }
 .artist b { display: block; margin-top: .375rem; font-size: .75rem; font-weight: 600; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 
 .continue { display: flex; align-items: center; gap: .875rem; padding: .75rem; margin: 0 .5rem; border-radius: 1rem; background: linear-gradient(135deg, #2a1a2a, #17171f); cursor: pointer; outline: none; }
@@ -279,3 +282,6 @@ html.tv #tvHint { display: grid; grid-template-columns: 1fr 1fr; position: fixed
 html.tv #tvHint b { color: var(--text); font-weight: 600; }
 html.tv .tabs button { padding: .9rem 1rem; }
 html.tv ::-webkit-scrollbar { display: none; }
+
+html.tv .artist { width: 6.5rem; }
+.hint.sug { background: none; padding: .5rem 0 0; font-size: .8125rem; }
