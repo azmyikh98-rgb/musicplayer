@@ -7,6 +7,7 @@ Pemutar musik berbasis YouTube yang bisa di-install ke layar utama HP, tablet, d
 - **Beranda**: Lanjutkan mendengarkan, Terakhir diputar, Liked Songs, My Playlist, Artis Favorit, Tangga Lagu Indonesia, Tangga Lagu Global.
 - **Artis Favorit**: tap **Tambah** untuk memilih dari saran atau mengetik nama artis sendiri, tap **Kelola** untuk berhenti mengikuti. Tap nama artis untuk mencari lagu-lagunya. Foto artis terisi otomatis setelah kamu memutar lagunya.
 - **Cari**: saran muncul saat mengetik, filter **Resmi** (menyaring reupload, lirik, cover, slowed), atau tempel link YouTube / YouTube Music.
+- **Pemutar penuh**: pilih **Video** atau **Lirik**. Lirik bertanda waktu disorot mengikuti lagu, tap satu baris untuk lompat ke sana, tombol −0,5s / +0,5s untuk menyesuaikan jika terlalu cepat atau lambat. Pintasan: `L` di keyboard, tombol hijau di remote TV.
 - **Pustaka**: semua daftar di atas dalam satu tempat.
 - **Menu lagu** (ikon titik tiga): suka, tambah ke playlist, ikuti artis, cari lagu dari artis.
 - Kontrol di lock screen (Media Session), acak, ulangi, seek.
@@ -16,6 +17,7 @@ Pemutar musik berbasis YouTube yang bisa di-install ke layar utama HP, tablet, d
 
 - **Pencarian**: `api/search.js` (Vercel Serverless Function) memakai YouTube Data API v3, lalu memberi skor tiap hasil.
 - **Saran ketikan**: `api/suggest.js` memakai endpoint saran pencarian YouTube (tanpa kunci, tidak memakai kuota). Endpoint ini tidak resmi, jika gagal aplikasi memakai riwayat pencarian.
+- **Lirik**: `api/lyrics.js` mengambil lirik dari [LRCLIB](https://lrclib.net) (gratis, tanpa API key, tidak memakai kuota YouTube). Tidak semua lagu ada liriknya. Video tetap tampil dan berjalan saat mode Lirik, sesuai aturan YouTube.
 - **Tangga lagu**: `api/charts.js` memakai daftar "musik terpopuler" YouTube per negara. Global = gabungan 10 negara besar. Ini bukan Billboard atau YouTube Music Charts resmi.
 - **Pemutaran**: YouTube IFrame Player API resmi.
 - **Data pengguna** (liked, playlist, artis, riwayat, posisi terakhir) disimpan di `localStorage` perangkat, tidak di server.
@@ -96,6 +98,7 @@ Untuk pemutaran latar belakang yang andal, aplikasi perlu mengambil audio langsu
 api/search.js           pencarian + ranking musik resmi
 api/suggest.js          saran saat mengetik
 api/charts.js           tangga lagu Indonesia & Global
+api/lyrics.js           lirik dari LRCLIB
 public/index.html       halaman utama
 public/app.js           logika aplikasi
 public/style.css        tampilan responsif

@@ -64,6 +64,8 @@ const state = {
   resume: store.get('resume', null),         // {track,pos,dur,queue,idx}
   charts: { ID: null, GLOBAL: null, err: {} },
   chartTab: store.get('chartTab', 'ID'),
+  pview: store.get('pview', 'video'),        // video | lyrics
+  lyr: { id: '', status: 'idle', synced: [], plain: '', src: '', active: -1 },
   confirmDel: false,
   queue: [], idx: -1,
   shuffle: store.get('shuffle', false),
@@ -311,6 +313,7 @@ function renderPlayer() {
   $('#miniTitle').textContent = t.title;
   $('#miniArtist').textContent = t.artist;
   $('#miniArt').src = t.thumb || thumb(t.id);
+  $('#pbg i').style.backgroundImage = `url("${(t.thumb || thumb(t.id)).replace(/"/g, '')}")`;
   $('#favBtn').classList.toggle('on', isFav(t.id));
   document.title = `${t.title} · Nada`;
 }
@@ -634,6 +637,7 @@ function load(start = 0) {
   store.set('recent', state.recent);
   backfillArtist(t);
   renderPlayer(); renderControls(); markPlaying(); updateMediaSession();
+  if (state.pview === 'lyrics') ensureLyrics(); else { state.lyr = { id: '', status: 'idle', synced: [], plain: '', src: '', active: -1 }; }
   $('#seek').value = 0; $('#seek').style.setProperty('--p', '0%');
 }
 
@@ -677,10 +681,96 @@ setInterval(() => {
   store.set('resume', state.resume);
 }, 3000);
 
+/* ---------- Lirik ---------- */
+const lyrCache = new Map();
+let lyrUser = 0, lyrReq = 0;
+const lyrOffs = store.get('lyrOffs', {});   // geser waktu lirik per lagu (detik)
+const lyrOff = () => (current() && lyrOffs[current().id]) || 0;
+
+function setPview(v, silent) {
+  state.pview = v === 'lyrics' ? 'lyrics' : 'video';
+  store.set('pview', state.pview);
+  $('#player').dataset.pview = state.pview;
+  $('#pvVideo').setAttribute('aria-pressed', String(state.pview === 'video'));
+  $('#pvLyrics').setAttribute('aria-pressed', String(state.pview === 'lyrics'));
+  if (state.pview === 'lyrics') ensureLyrics();
+}
+
+function lyrSearchLink(t) {
+  return `https://www.google.com/search?q=${encodeURIComponent(`${t.title} ${t.artist} lirik`)}`;
+}
+
+function renderLyrics() {
+  const el = $('#lyrics'), L = state.lyr, t = current();
+  el.classList.toggle('plain', L.status === 'ok' && !L.synced.length);
+  if (!t) { el.innerHTML = '<p class="ly-msg">Putar lagu untuk melihat liriknya.</p>'; return; }
+  if (L.status === 'loading') { el.innerHTML = '<div class="ly-sk" style="width:80%"></div><div class="ly-sk" style="width:60%"></div><div class="ly-sk" style="width:72%"></div><div class="ly-sk" style="width:50%"></div>'; return; }
+  if (L.status === 'instrumental') { el.innerHTML = '<p class="ly-msg">Lagu instrumental, tidak ada lirik.</p>'; return; }
+  if (L.status !== 'ok') {
+    el.innerHTML = `<p class="ly-msg">${L.status === 'err' ? 'Lirik tidak bisa dimuat sekarang.' : 'Lirik lagu ini belum tersedia.'}<br><a href="${lyrSearchLink(t)}" target="_blank" rel="noopener">Cari di Google</a></p>`;
+    return;
+  }
+  const off = lyrOff();
+  const sync = L.synced.length ? `<span class="ly-off"><button type="button" data-lyoff="-0.5" aria-label="Lirik lebih cepat">−0,5s</button>${off ? `<em>${off > 0 ? '+' : ''}${String(off).replace('.', ',')}s</em>` : ''}<button type="button" data-lyoff="0.5" aria-label="Lirik lebih lambat">+0,5s</button></span>` : '';
+  const src = `<div class="ly-src"><span>Lirik dari ${esc(L.src || 'LRCLIB')}</span>${sync}</div>`;
+  if (L.synced.length) {
+    el.innerHTML = L.synced.map((l, i) => `<p data-ly="${i}" data-t="${l[0]}"${l[1] ? '' : ' class="gap"'}>${l[1] ? esc(l[1]) : '♪'}</p>`).join('') + src;
+  } else {
+    el.innerHTML = L.plain.split(/\r?\n/).map((l) => (l.trim() ? `<p>${esc(l)}</p>` : '<p class="gap"></p>')).join('') + src;
+  }
+  L.active = -1;
+}
+
+async function ensureLyrics() {
+  const t = current(); if (!t) { renderLyrics(); return; }
+  if (state.lyr.id === t.id && state.lyr.status !== 'idle' && state.lyr.status !== 'err') { return; }
+  const hit = lyrCache.get(t.id);
+  if (hit) { state.lyr = { id: t.id, ...hit, active: -1 }; renderLyrics(); $('#lyrics').scrollTop = 0; return; }
+  const my = ++lyrReq;
+  state.lyr = { id: t.id, status: 'loading', synced: [], plain: '', src: '', active: -1 };
+  renderLyrics(); $('#lyrics').scrollTop = 0;
+  const dur = ytReady && yt.getDuration ? Math.round(yt.getDuration() || 0) : 0;
+  try {
+    const r = await fetch(`/api/lyrics?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}${dur ? '&dur=' + dur : ''}`);
+    const d = await r.json();
+    if (my !== lyrReq) return;
+    if (!r.ok) throw new Error(d.error || 'gagal');
+    let v;
+    if (!d.found) v = { status: 'none', synced: [], plain: '', src: '' };
+    else if (d.instrumental) v = { status: 'instrumental', synced: [], plain: '', src: '' };
+    else if ((d.synced && d.synced.length) || (d.plain && d.plain.trim())) v = { status: 'ok', synced: d.synced || [], plain: d.plain || '', src: d.source || 'LRCLIB' };
+    else v = { status: 'none', synced: [], plain: '', src: '' };
+    lyrCache.set(t.id, v);
+    state.lyr = { id: t.id, ...v, active: -1 };
+  } catch {
+    if (my !== lyrReq) return;
+    state.lyr = { id: t.id, status: 'err', synced: [], plain: '', src: '', active: -1 };
+  }
+  renderLyrics();
+}
+
+// sorot baris yang sedang dinyanyikan dan gulir ke tengah
+function lyricsTick(cur) {
+  const L = state.lyr, t = current();
+  if (state.pview !== 'lyrics' || !t || L.id !== t.id || L.status !== 'ok' || !L.synced.length) return;
+  const x = cur + 0.25 - lyrOff();
+  let lo = 0, hi = L.synced.length - 1, idx = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (L.synced[m][0] <= x) { idx = m; lo = m + 1; } else hi = m - 1; }
+  if (idx === L.active) return;
+  const el = $('#lyrics');
+  el.querySelector('p.on')?.classList.remove('on');
+  L.active = idx;
+  const p = idx >= 0 ? el.querySelector(`[data-ly="${idx}"]`) : null;
+  if (!p) return;
+  p.classList.add('on');
+  if (Date.now() - lyrUser > 4000) el.scrollTo({ top: Math.max(0, p.offsetTop - el.clientHeight / 2 + p.offsetHeight / 2), behavior: 'smooth' });
+}
+
 /* progres */
 setInterval(() => {
   if (!ytReady || !current() || typeof yt.getCurrentTime !== 'function') return;
   const cur = yt.getCurrentTime() || 0, dur = yt.getDuration() || 0;
+  lyricsTick(cur);
   if (!dur) return;
   const p = (cur / dur) * 100;
   $('#miniBar').style.width = p + '%';
@@ -780,6 +870,20 @@ $('#mini').addEventListener('click', (e) => {
   if (e.target.closest('#miniNext')) return next();
   $('#player').classList.add('open');
 });
+$('#pvVideo').addEventListener('click', () => setPview('video'));
+$('#pvLyrics').addEventListener('click', () => setPview('lyrics'));
+$('#lyrics').addEventListener('click', (e) => {
+  const ob = e.target.closest('[data-lyoff]');
+  if (ob && current()) {
+    const id = current().id, v = Math.round(((lyrOffs[id] || 0) + parseFloat(ob.dataset.lyoff)) * 10) / 10;
+    if (v) lyrOffs[id] = v; else delete lyrOffs[id];
+    const keys = Object.keys(lyrOffs); if (keys.length > 60) delete lyrOffs[keys[0]];
+    store.set('lyrOffs', lyrOffs); const top = $('#lyrics').scrollTop; renderLyrics(); $('#lyrics').scrollTop = top; state.lyr.active = -1; return;
+  }
+  const p = e.target.closest('[data-t]'); if (!p || !ytReady) return;
+  lyrUser = 0; yt.seekTo(parseFloat(p.dataset.t), true);
+});
+['wheel', 'touchmove'].forEach((ev) => $('#lyrics').addEventListener(ev, () => { lyrUser = Date.now(); }, { passive: true }));
 $('#collapse').addEventListener('click', () => $('#player').classList.remove('open'));
 $('#play').addEventListener('click', toggle);
 $('#next').addEventListener('click', () => next());
@@ -833,7 +937,7 @@ function seekBy(sec) {
 const visible = (el) => el.getClientRects().length > 0;
 function focusables() {
   if (!$('#menu').hidden) return [...document.querySelectorAll('#menu button, #menu input')].filter(visible);
-  return [...document.querySelectorAll('.tabs button, #q, #officialBtn, #suggest button, #list [data-nav], #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
+  return [...document.querySelectorAll('.tabs button, #q, #officialBtn, #suggest button, #list [data-nav], #pvVideo, #pvLyrics, #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
 }
 
 // Navigasi spasial: pindah fokus ke elemen terdekat pada arah panah
@@ -871,6 +975,7 @@ document.addEventListener('keydown', (e) => {
   if (k === 'MediaPlayPause' || kc === 415 || kc === 19 || kc === 179) { e.preventDefault(); toggle(); return; }
   if (k === 'MediaTrackNext' || kc === 417) { e.preventDefault(); next(); return; }
   if (k === 'MediaTrackPrevious' || kc === 412) { e.preventDefault(); prev(); return; }
+  if (kc === 404) { e.preventDefault(); setPview(state.pview === 'lyrics' ? 'video' : 'lyrics'); return; }  // 404 = hijau
   if (kc === 405 || (state.tv && !typing && (k === 'f' || k === 'F'))) { e.preventDefault(); likeFocused(); return; }  // 405 = kuning
   if (kc === 406 || (state.tv && !typing && (k === 'm' || k === 'M'))) { e.preventDefault(); menuFocused(); return; }  // 406 = biru
 
@@ -892,6 +997,7 @@ document.addEventListener('keydown', (e) => {
   }
 
   if (typing && !(state.tv && (k === 'ArrowUp' || k === 'ArrowDown'))) return;
+  if ((k === 'l' || k === 'L') && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); setPview(state.pview === 'lyrics' ? 'video' : 'lyrics'); return; }
   if (k === '/' && !typing) { e.preventDefault(); $('#q').focus(); return; }
   if (t.id === 'seek' && (k === 'ArrowLeft' || k === 'ArrowRight')) { e.preventDefault(); seekBy(k === 'ArrowRight' ? 5 : -5); return; }
   if ((k === 'Enter' || k === ' ') && t.hasAttribute && t.hasAttribute('data-nav') && !t.matches('button')) { e.preventDefault(); t.click(); return; }
@@ -909,7 +1015,7 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---------- init ---------- */
-applyLayout(); updateOfficialBtn(); renderControls(); render();
+applyLayout(); setPview(state.pview); updateOfficialBtn(); renderControls(); render();
 if (state.tab === 'home' || state.tab === 'library') loadCharts();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));

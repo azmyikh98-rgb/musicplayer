@@ -153,13 +153,13 @@ svg { width: 1.5rem; height: 1.5rem; fill: none; stroke: currentColor; stroke-wi
   max-width: 45rem; margin: 0 auto; overflow-y: auto; }
 .sheet.open { transform: none; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: .8125rem; text-transform: uppercase; letter-spacing: .06em; }
-.video { margin: .875rem 0 1.375rem; width: 100%; aspect-ratio: 16 / 9; min-height: 12.5rem; border-radius: .875rem; overflow: hidden; background: #000; box-shadow: 0 .75rem 2.5rem rgba(0,0,0,.6); flex: none; }
+.video { margin: .75rem 0 1rem; width: 100%; aspect-ratio: 16 / 9; min-height: 12.5rem; border-radius: .875rem; overflow: hidden; background: #000; box-shadow: 0 .75rem 2.5rem rgba(0,0,0,.6); flex: none; }
 .video iframe, .video #yt { width: 100%; height: 100%; display: block; pointer-events: none; }
 .info { display: flex; align-items: center; gap: .25rem; }
 .info .meta { flex: 1; min-width: 0; }
 .info h2 { margin: 0; font-size: 1.25rem; line-height: 1.25; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .info p { margin: .25rem 0 0; color: var(--muted); }
-.seek { margin: 1.25rem 0 .5rem; }
+.seek { margin: 1rem 0 .25rem; }
 .times { display: flex; justify-content: space-between; color: var(--muted); font-size: .75rem; margin-top: .25rem; font-variant-numeric: tabular-nums; }
 input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 1.75rem; background: transparent; margin: 0; }
 input[type=range]::-webkit-slider-runnable-track { height: .25rem; border-radius: .125rem; background: linear-gradient(90deg, var(--accent) var(--p, 0%), #33333f var(--p, 0%)); }
@@ -314,3 +314,50 @@ html.tv .seg { font-size: 1rem; padding: .6rem 1.4rem; }
 .fol { margin-top: .375rem; padding: .25rem .625rem; border-radius: 1rem; background: var(--panel-2); color: var(--text); font-size: .6875rem; font-weight: 600; }
 .fol.on { background: rgba(255,79,109,.15); color: var(--accent); }
 html.tv .artist.pop { width: 8rem; } html.tv .fol { font-size: .8125rem; }
+
+/* ---------- Pemutar penuh: latar, pilihan Video/Lirik, lirik ---------- */
+#pbg { position: absolute; inset: 0; overflow: hidden; z-index: -1; pointer-events: none; }
+#pbg i { position: absolute; inset: -25%; background-size: cover; background-position: center; filter: blur(48px) saturate(1.5); opacity: .45; transition: background-image .4s; }
+#pbg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14,14,19,.15) 0%, rgba(14,14,19,.75) 55%, var(--bg) 100%); }
+.sheet-head span:nth-child(2) { font-weight: 600; }
+.pview { display: flex; gap: .25rem; padding: .25rem; margin: .5rem auto 0; background: rgba(255,255,255,.08); border-radius: 1.5rem; flex: none; }
+.pview button { padding: .4rem 1.375rem; border-radius: 1.25rem; font-size: .8125rem; font-weight: 600; color: var(--muted); outline: none; }
+.pview button[aria-pressed="true"] { background: #fff; color: #0e0e13; }
+.pview button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sheet[data-pview="video"] .info { margin-top: auto; }
+.sheet[data-pview="video"] .lyrics { display: none; }
+.sheet[data-pview="lyrics"] .video { margin-bottom: .5rem; }
+.info h2 { font-size: 1.375rem; }
+.controls { margin: .5rem 0 .25rem; }
+.lyrics { position: relative; flex: 1 1 0; min-height: 9rem; overflow-y: auto; scrollbar-width: none; scroll-behavior: smooth; padding: 1.25rem .25rem 1.5rem;
+  -webkit-mask-image: linear-gradient(transparent 0, #000 10%, #000 90%, transparent 100%); mask-image: linear-gradient(transparent 0, #000 10%, #000 90%, transparent 100%); }
+.lyrics::-webkit-scrollbar { display: none; }
+.lyrics p { margin: 0; padding: .375rem 0; font-size: 1.375rem; line-height: 1.3; font-weight: 700; color: rgba(255,255,255,.3); cursor: pointer; transition: color .3s, transform .3s; transform-origin: left center; overflow-wrap: anywhere; }
+.lyrics p.on { color: #fff; transform: scale(1.04); }
+.lyrics p.gap { font-size: 1rem; }
+.lyrics.plain p { font-size: 1.0625rem; font-weight: 500; color: rgba(255,255,255,.82); cursor: default; padding: .1875rem 0; }
+.lyrics.plain p.gap { padding: .5rem 0; }
+.lyrics .ly-msg { color: var(--muted); font-size: .9375rem; text-align: center; padding: 2rem 1rem; cursor: default; }
+.lyrics .ly-msg a { color: var(--accent); display: inline-block; margin-top: .75rem; font-weight: 600; }
+.lyrics .ly-src { display: flex; align-items: center; justify-content: space-between; gap: .5rem; color: rgba(255,255,255,.4); font-size: .6875rem; padding: 1rem 0 0; font-weight: 500; cursor: default; }
+.ly-off { display: inline-flex; align-items: center; gap: .375rem; }
+.ly-off button { padding: .25rem .5rem; border-radius: .75rem; background: rgba(255,255,255,.1); color: var(--text); font-size: .6875rem; font-weight: 600; }
+.ly-off em { font-style: normal; color: var(--accent); }
+.lyrics .ly-sk { height: 1.25rem; margin: .875rem 0; border-radius: .5rem; background: linear-gradient(90deg, var(--panel) 25%, var(--panel-2) 50%, var(--panel) 75%); background-size: 200% 100%; animation: sh 1.2s infinite; }
+html[data-layout="desktop"] .lyrics p { font-size: 1.1875rem; }
+html[data-layout="desktop"] .lyrics.plain p { font-size: .9375rem; }
+html[data-layout="desktop"] .sheet #pbg { left: 0; }
+html.tv .lyrics p { font-size: 1.125rem; }
+html.tv .lyrics.plain p { font-size: .875rem; }
+html.tv .pview button { padding: .4rem 1.1rem; }
+@media (max-height: 700px) { .sheet[data-pview="lyrics"] .lyrics { min-height: 7rem; } .controls .play-btn { width: 3.75rem; height: 3.75rem; } }
+
+.sheet[data-pview="video"] .video { margin-top: auto; margin-bottom: auto; }
+.sheet[data-pview="video"] .info { margin-top: 0; }
+html.tv .quick { grid-template-columns: 1fr 1fr; max-width: none; }
+html.tv .video { min-height: 200px; margin: .5rem 0; }
+html.tv .sheet { padding-bottom: 7.5rem; }
+html.tv .sheet[data-pview="lyrics"] .lyrics { min-height: 5rem; }
+html.tv .info h2 { font-size: 1.125rem; }
+html.tv .seek { margin: .5rem 0 0; }
+html.tv .sheet[data-pview="lyrics"] .info { display: none; }
