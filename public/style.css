@@ -444,3 +444,10 @@ html.tv .upnext h3 { font-size: .625rem; }
 #impCode { text-transform: uppercase; letter-spacing: .08em; }
 #impCode::placeholder { text-transform: none; letter-spacing: 0; }
 html.tv .share-qr { width: 11rem; } html.tv .share-code { font-size: 1.5rem; }
+
+.share-qr svg, .share-qr svg * { stroke: none !important; }
+.share-qr svg rect { fill: #fff; } .share-qr svg path { fill: #000; }
+.share-long { margin: .5rem .25rem 0; padding: .625rem .75rem; border-radius: .625rem; background: var(--panel); color: var(--text); text-align: left;
+  font: 500 .75rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; max-height: 4.5rem; overflow-y: auto; user-select: all; outline: none; }
+.share-long:focus-visible { outline: 2px solid var(--accent); }
+.share-long { background: rgba(255,255,255,.07); }

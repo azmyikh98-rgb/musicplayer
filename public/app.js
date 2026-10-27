@@ -553,7 +553,7 @@ function renderMenu() {
     else {
       if (S.qr) h += `<div class="share-qr">${S.qr}</div>`;
       if (S.code) h += `<div class="share-code" aria-label="Kode ${esc(S.code)}">${esc(S.code.slice(0, 4))}<i>-</i>${esc(S.code.slice(4))}</div><p class="share-note">Pindai QR dengan kamera HP, atau ketik kode ini lewat menu Impor di Nada. Berlaku 30 hari.</p>`;
-      else h += `<p class="share-note">${S.long ? 'Playlist ini terlalu panjang untuk QR. ' : ''}Kirim tautan atau kode panjang di bawah.${S.nostore ? ' Kode pendek (untuk diketik di TV) aktif setelah Upstash Redis disambungkan di Vercel.' : ''}</p>`;
+      else h += `<div class="share-long" tabindex="0" aria-label="Kode panjang">${esc(S.payload)}</div><p class="share-note">${S.long ? 'Playlist ini terlalu panjang untuk QR. ' : 'Pindai QR dengan kamera HP, atau salin kode di atas dan tempel lewat menu Impor. '}${S.nostore ? 'Kode pendek 8 karakter (untuk diketik di TV) aktif setelah Upstash Redis disambungkan di Vercel.' : ''}</p>`;
       h += act('copycode', ICON.list, S.code ? 'Salin kode' : 'Salin kode panjang') + act('copylink', ICON.share, 'Salin tautan');
       if (navigator.share) h += act('nativeshare', ICON.share, 'Bagikan lewat…');
     }
