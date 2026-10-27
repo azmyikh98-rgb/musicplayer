@@ -1,0 +1,49 @@
+name: Build Android TV APK
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'android-tv/**'
+      - '.github/workflows/android-tv.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: android-actions/setup-android@v3
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build APK
+        working-directory: android-tv
+        run: gradle assembleRelease --no-daemon --stacktrace
+
+      - name: Rename APK
+        run: cp android-tv/app/build/outputs/apk/release/app-release.apk Nada-TV.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Nada-TV
+          path: Nada-TV.apk
+
+      # Tautan unduhan tetap: https://github.com/<pemilik>/<repo>/releases/download/tv-latest/Nada-TV.apk
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: tv-latest
+          name: Nada untuk Google TV
+          body: APK Nada untuk Google TV / Android TV. Pasang lewat aplikasi Downloader.
+          files: Nada-TV.apk

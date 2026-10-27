@@ -1,0 +1,43 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'app.vercel.musicplayerazmyra.tv'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'app.vercel.musicplayerazmyra.tv'
+        minSdk 23
+        targetSdk 34
+        versionCode 1
+        versionName '1.0'
+    }
+
+    // Kunci tanda tangan pribadi untuk aplikasi sideload ini (bukan untuk Google Play).
+    signingConfigs {
+        release {
+            storeFile file('../nada.keystore')
+            storePassword 'nadatv123'
+            keyAlias 'nada'
+            keyPassword 'nadatv123'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    lint {
+        checkReleaseBuilds false
+        abortOnError false
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

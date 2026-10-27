@@ -86,6 +86,18 @@ Batasannya: karena memakai player resmi YouTube, perilaku di latar belakang diat
 
 Untuk pemutaran latar belakang yang andal, aplikasi perlu mengambil audio langsung dari server YouTube. Itu melanggar ketentuan layanan YouTube, jadi tidak dibuat di sini.
 
+## Aplikasi untuk Google TV / Android TV
+
+Folder `android-tv/` berisi pembungkus Android kecil (WebView) yang membuka Nada dalam mode TV dan muncul sebagai ikon di layar utama Google TV. APK-nya dibangun otomatis oleh GitHub Actions (`.github/workflows/android-tv.yml`) setiap kali folder itu berubah, atau lewat tab **Actions → Build Android TV APK → Run workflow**.
+
+Pasang di TV:
+
+1. Pasang **Downloader** dari Play Store di Google TV, lalu izinkan: Pengaturan → Privasi/Keamanan → Instal aplikasi tak dikenal → Downloader.
+2. Buka Downloader, ketik `https://github.com/azmyikh98-rgb/musicplayer/releases/download/tv-latest/Nada-TV.apk`, lalu pasang. (Repo harus publik. Jika privat, unduh `Nada-TV` dari tab Actions di PC dan pindahkan ke TV lewat USB.)
+3. Buka **Nada** dari daftar aplikasi.
+
+Catatan: alamat situs ada di `MainActivity.java` (`HOST`). Aplikasi ini hanya memuat situs Nada, jadi pembaruan tampilan cukup `git push` ke Vercel tanpa memasang ulang APK. Kunci tanda tangan di `android-tv/nada.keystore` hanya untuk sideload pribadi, bukan untuk Google Play. Tombol remote: warna kuning = suka, biru = menu lagu, hijau = video/lirik, tombol media = putar/jeda/lagu berikutnya, Kembali dua kali = keluar.
+
 ## Batasan lain
 
 - Tidak semua lagu bisa diputar: pemilik video bisa melarang embed. Aplikasi otomatis lompat ke lagu berikutnya.
@@ -104,5 +116,7 @@ public/app.js           logika aplikasi
 public/style.css        tampilan responsif
 public/sw.js            service worker
 public/manifest.webmanifest, public/icons/   PWA
+android-tv/             pembungkus aplikasi Google TV
+.github/workflows/      build APK otomatis
 vercel.json
 ```
