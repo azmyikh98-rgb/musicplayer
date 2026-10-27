@@ -13,6 +13,14 @@ Pemutar musik berbasis YouTube yang bisa di-install ke layar utama HP, tablet, d
 - Kontrol di lock screen (Media Session), acak, ulangi, seek.
 - Responsif: HP, tablet, desktop, dan mode TV dengan navigasi remote.
 
+## Berbagi playlist antar perangkat (QR + kode)
+
+- **Bagikan**: buka playlist (atau Liked Songs), tap **Bagikan**. Muncul kode QR, kode pendek 8 karakter (mis. `K7M4-2Q9X`), dan tombol salin kode / tautan.
+- **Impor**: Beranda → kartu **Impor playlist**, atau Pustaka → **Impor playlist**. Ketik kode, atau tempel tautan. Di HP cukup pindai QR dengan kamera bawaan, Nada terbuka dan langsung menawarkan menyimpan playlist.
+- Hasil impor adalah salinan di perangkat itu. Perubahan setelahnya tidak ikut tersinkron.
+- **Kode pendek butuh Redis gratis** (agar bisa diketik di TV): Vercel → proyek → **Storage → Create Database → Upstash for Redis** (paket gratis) → hubungkan ke proyek `musicplayer` (Environment: Production) → **Redeploy**. Variabel `KV_REST_API_URL` dan `KV_REST_API_TOKEN` terisi otomatis. Kode berlaku 30 hari, isinya hanya ID dan judul lagu.
+- **Tanpa Redis** fitur tetap jalan, tetapi memakai tautan dan kode panjang (QR hanya untuk playlist sampai sekitar 50 lagu). Impor tautan panjang memakai 1 unit kuota YouTube per 50 lagu (`api/videos.js`).
+
 ## Cara kerja
 
 - **Pencarian**: `api/search.js` (Vercel Serverless Function) memakai YouTube Data API v3, lalu memberi skor tiap hasil.
@@ -111,8 +119,11 @@ api/search.js           pencarian + ranking musik resmi
 api/suggest.js          saran saat mengetik
 api/charts.js           tangga lagu Indonesia & Global
 api/lyrics.js           lirik dari LRCLIB
+api/share.js            kode pendek untuk berbagi playlist (Upstash Redis)
+api/videos.js           judul lagu dari daftar ID (impor tautan panjang)
 public/index.html       halaman utama
 public/app.js           logika aplikasi
+public/qr.js            pembuat kode QR (MIT, Kazuhiko Arase)
 public/style.css        tampilan responsif
 public/sw.js            service worker
 public/manifest.webmanifest, public/icons/   PWA

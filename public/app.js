@@ -24,6 +24,8 @@ const avatar = (a) => a.thumb
   : `<div class="av" style="background:linear-gradient(135deg,hsl(${artHue(a.name)},65%,55%),hsl(${(artHue(a.name) + 40) % 360},65%,35%))">${esc(a.name.charAt(0).toUpperCase())}</div>`;
 
 const ICON = {
+  share: '<svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg>',
+  download: '<svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>',
   play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
   pause: '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
   prev: '<svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg>',
@@ -220,6 +222,7 @@ function homeHTML() {
       <b>${esc(p.name)}</b><small>Playlist</small></div>`;
   });
   plCards.unshift(`<div class="card new" data-nav tabindex="0" role="button" data-newpl aria-label="Buat playlist baru"><div class="cover">${ICON.plus}</div><b>Playlist baru</b><small>Buat sendiri</small></div>`);
+  plCards.splice(1, 0, `<div class="card new" data-nav tabindex="0" role="button" data-import aria-label="Impor playlist dengan kode"><div class="cover">${ICON.download}</div><b>Impor playlist</b><small>Pakai kode / QR</small></div>`);
   out += section('My Playlist', hscroll(plCards));
 
   // 6. liked songs, hanya jika ada (tile di atas sudah jadi pintu masuk saat kosong)
@@ -249,6 +252,7 @@ function libraryHTML() {
   out += lib('data-open="chartGLOBAL"', ICON.list, false, 'Tangga Lagu Global', 'Gabungan beberapa negara');
   out += '<div class="lib-h">Playlist</div>';
   out += lib('data-newpl', ICON.plus, false, 'Buat playlist baru', 'Kumpulkan lagu pilihanmu');
+  out += lib('data-import', ICON.download, false, 'Impor playlist', 'Pakai kode atau QR dari perangkat lain');
   out += state.playlists.map((p) => lib(`data-pl="${p.id}"`, ICON.list, false, esc(p.name), `${p.tracks.length} lagu`)).join('');
   out += '<div class="lib-h">Artis favorit</div>';
   out += lib('data-manageart', ICON.plus, false, 'Tambah / kelola artis', 'Ikuti artis favoritmu');
@@ -273,6 +277,7 @@ function viewHTML() {
   else body = tracks.map((t, i) => rowHTML(t, i, ctx, isChart)).join('');
   return `<div class="view-head">
     <button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><h2>${title}</h2><span class="grow"></span>
+    ${tracks.length && (isPl || ctx === 'liked') ? `<button class="pill ghost" data-nav data-share="${esc(ctx)}">Bagikan</button>` : ''}
     ${tracks.length ? `<button class="pill" data-nav data-playall="${esc(ctx)}">Putar semua</button>` : ''}
     ${isPl ? `<button class="pill ghost" data-nav data-delpl>${state.confirmDel ? 'Yakin hapus?' : 'Hapus'}</button>` : ''}
   </div><div class="tracks">${body}</div>`;
@@ -285,7 +290,7 @@ function render() {
   // jaga posisi geser carousel dan fokus (penting untuk remote TV)
   const scrolls = [...el.querySelectorAll('.hscroll')].map((h) => h.scrollLeft);
   const f = el.contains(document.activeElement) ? document.activeElement.closest('[data-nav]') : null;
-  const fKey = f ? { play: f.dataset.play, i: f.dataset.i, sel: ['data-open', 'data-charttab', 'data-focussearch', 'data-pl', 'data-artist', 'data-manageart', 'data-followart', 'data-newpl', 'data-resume', 'data-back', 'data-playall', 'data-delpl'].find((a) => f.hasAttribute(a)) } : null;
+  const fKey = f ? { play: f.dataset.play, i: f.dataset.i, sel: ['data-open', 'data-share', 'data-import', 'data-charttab', 'data-focussearch', 'data-pl', 'data-artist', 'data-manageart', 'data-followart', 'data-newpl', 'data-resume', 'data-back', 'data-playall', 'data-delpl'].find((a) => f.hasAttribute(a)) } : null;
   const fVal = fKey && fKey.sel ? f.getAttribute(fKey.sel) : null;
 
   el.innerHTML = state.view ? viewHTML() : state.tab === 'home' ? homeHTML() : state.tab === 'library' ? libraryHTML() : searchHTML();
@@ -515,7 +520,7 @@ function openMenu(track, ctx, mode) {
   mctx = { track, ctx, mode: mode || (track ? 'main' : 'newpl') };
   renderMenu();
   $('#menu').hidden = false;
-  (mctx.mode === 'newpl' ? $('#plName') : mctx.mode === 'artists' ? $('#artName') : $('#menuBody button'))?.focus();
+  (mctx.mode === 'newpl' ? $('#plName') : mctx.mode === 'artists' ? $('#artName') : mctx.mode === 'import' ? $('#impCode') : $('#menuBody button'))?.focus();
 }
 function closeMenu() { $('#menu').hidden = true; mctx = null; }
 
@@ -541,10 +546,130 @@ function renderMenu() {
     if (sug.length) h += '<div class="sub">Saran</div>' + sug.map((n) => act('addart', ICON.plus, n, false, `data-name="${esc(n)}"`)).join('');
     if (state.artists.length) h += '<div class="sub">Diikuti (tap untuk berhenti mengikuti)</div>' + state.artists.map((a) => act('delart', ICON.trash, a.name, true, `data-name="${esc(a.name)}"`)).join('');
     h += act('close', ICON.back, 'Selesai');
+  } else if (mode === 'share') {
+    const S = mctx.share;
+    h += `<div class="sub">Bagikan "${esc(S.name)}" · ${S.count} lagu</div>`;
+    if (S.status === 'loading') h += '<p class="share-note">Membuat kode…</p>';
+    else {
+      if (S.qr) h += `<div class="share-qr">${S.qr}</div>`;
+      if (S.code) h += `<div class="share-code" aria-label="Kode ${esc(S.code)}">${esc(S.code.slice(0, 4))}<i>-</i>${esc(S.code.slice(4))}</div><p class="share-note">Pindai QR dengan kamera HP, atau ketik kode ini lewat menu Impor di Nada. Berlaku 30 hari.</p>`;
+      else h += `<p class="share-note">${S.long ? 'Playlist ini terlalu panjang untuk QR. ' : ''}Kirim tautan atau kode panjang di bawah.${S.nostore ? ' Kode pendek (untuk diketik di TV) aktif setelah Upstash Redis disambungkan di Vercel.' : ''}</p>`;
+      h += act('copycode', ICON.list, S.code ? 'Salin kode' : 'Salin kode panjang') + act('copylink', ICON.share, 'Salin tautan');
+      if (navigator.share) h += act('nativeshare', ICON.share, 'Bagikan lewat…');
+    }
+    h += act('close', ICON.back, 'Selesai');
+  } else if (mode === 'import') {
+    h += '<div class="sub">Impor playlist</div>';
+    if (mctx.busy) h += '<p class="share-note">Memuat playlist…</p>';
+    else {
+      h += '<form id="impForm"><input id="impCode" type="text" maxlength="2000" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Kode 8 karakter atau tautan" aria-label="Kode playlist"><button class="pill" type="submit">Cari</button></form>';
+      h += '<p class="share-note">Ketik kode dari perangkat lain, atau tempel tautan yang dibagikan. Di HP, pindai QR dengan kamera bawaan.</p>';
+      if (mctx.err) h += `<p class="share-note err">${esc(mctx.err)}</p>`;
+    }
+    h += act('close', ICON.back, 'Tutup');
+  } else if (mode === 'preview') {
+    const P = mctx.preview;
+    h += '<div class="sub">Playlist ditemukan</div>';
+    h += `<form id="impSave"><input id="impName" type="text" maxlength="40" value="${esc(P.name)}" aria-label="Nama playlist"><button class="pill" type="submit">Simpan</button></form>`;
+    h += `<p class="share-note">${P.tracks.length} lagu: ${esc(P.tracks.slice(0, 3).map((t) => t.title).join(', '))}${P.tracks.length > 3 ? ', …' : ''}</p>`;
+    h += act('toimport', ICON.back, 'Kembali') + act('close', ICON.back, 'Batal');
   } else {
-    h += '<div class="sub">Buat playlist</div>' + newPlForm + act('close', ICON.back, 'Tutup');
+    h += '<div class="sub">Buat playlist</div>' + newPlForm + act('toimport', ICON.download, 'Impor dengan kode / QR') + act('close', ICON.back, 'Tutup');
   }
   $('#menuBody').innerHTML = h;
+}
+
+
+/* ---------- Bagikan & impor playlist (QR + kode) ---------- */
+const b64u = {
+  enc(str) { const b = new TextEncoder().encode(str); let bin = ''; b.forEach((x) => { bin += String.fromCharCode(x); }); return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); },
+  dec(str) { str = str.replace(/-/g, '+').replace(/_/g, '/'); while (str.length % 4) str += '='; return new TextDecoder().decode(Uint8Array.from(atob(str), (c) => c.charCodeAt(0))); },
+};
+const packShare = (name, tracks) => b64u.enc(JSON.stringify({ n: name, i: tracks.map((t) => t.id).join('') }));
+const QR_MAX = 700;   // batas panjang teks agar QR tetap mudah dipindai
+
+function parseShareInput(text) {
+  text = String(text || '').trim();
+  let m = text.match(/[#?&](?:c|code)=([A-Za-z0-9-]{8,9})(?![A-Za-z0-9-])/);
+  if (m) return { code: m[1].replace(/-/g, '').toUpperCase() };
+  m = text.match(/[#?&]share=([\w-]+)/); if (m) return { payload: m[1] };
+  m = text.match(/^NADA1\.([\w-]+)$/); if (m) return { payload: m[1] };
+  const c = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
+  if (/^[A-Z2-9]{8}$/.test(c)) return { code: c };
+  return null;
+}
+
+async function resolveShare(text) {
+  const p = parseShareInput(text);
+  if (!p) throw new Error('Kode tidak dikenali. Periksa lagi atau tempel tautannya.');
+  if (p.code) {
+    const r = await fetch('/api/share?code=' + encodeURIComponent(p.code));
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Kode tidak ditemukan.');
+    return { name: d.name || 'Playlist', tracks: (d.tracks || []).map((t) => ({ id: t.id, title: t.title, artist: t.artist, thumb: thumb(t.id) })) };
+  }
+  let o; try { o = JSON.parse(b64u.dec(p.payload)); } catch { throw new Error('Kode rusak atau terpotong. Salin ulang dari awal.'); }
+  const ids = String(o.i || '').match(/[\w-]{11}/g) || [];
+  if (!ids.length) throw new Error('Playlist ini kosong.');
+  const tracks = [];
+  for (let i = 0; i < ids.length; i += 50) {
+    const r = await fetch('/api/videos?ids=' + ids.slice(i, i + 50).join(','));
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Data lagu tidak bisa dimuat.');
+    (d.items || []).forEach((t) => tracks.push({ id: t.id, title: t.title, artist: t.artist, thumb: thumb(t.id) }));
+  }
+  if (!tracks.length) throw new Error('Lagu dalam playlist ini tidak ditemukan.');
+  return { name: String(o.n || 'Playlist').slice(0, 40), tracks };
+}
+
+async function importFrom(text) {
+  const my = mctx; if (!my) return;
+  my.busy = true; my.err = ''; renderMenu();
+  try {
+    const res = await resolveShare(text);
+    if (mctx !== my) return;
+    my.busy = false; my.mode = 'preview'; my.preview = res; renderMenu();
+    $('#impName')?.focus();
+  } catch (e) {
+    if (mctx !== my) return;
+    my.busy = false; my.mode = 'import'; my.err = e.message || 'Gagal memuat.'; renderMenu();
+    $('#impCode')?.focus();
+  }
+}
+
+async function openShare(ctx) {
+  const tracks = ctxTracks(ctx);
+  if (!tracks.length) { toast('Playlist masih kosong'); return; }
+  const pl = ctx.startsWith('pl:') ? state.playlists.find((p) => p.id === ctx.slice(3)) : null;
+  const name = pl ? pl.name : 'Liked Songs';
+  const list = tracks.slice(0, 200).map((t) => ({ id: t.id, title: t.title, artist: t.artist }));
+  const S = { name, count: list.length, status: 'loading', code: '', link: '', qr: '', long: false, nostore: false };
+  mctx = { track: null, ctx, mode: 'share', share: S };
+  renderMenu(); $('#menu').hidden = false; $('#menuBody button')?.focus();
+  const my = mctx;
+  try {
+    const r = await fetch('/api/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, tracks: list }) });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok && d.code) { S.code = d.code; S.link = `${location.origin}/#c=${d.code}`; }
+    else { S.nostore = r.status === 501; }
+  } catch { /* offline: pakai tautan panjang */ }
+  if (!S.code) { S.link = `${location.origin}/#share=${packShare(name, list)}`; S.payload = `NADA1.${packShare(name, list)}`; }
+  if (S.link.length <= QR_MAX && window.NadaQR) { try { S.qr = NadaQR.svg(S.link); } catch {} }
+  S.long = !S.code && !S.qr;
+  S.status = 'ok';
+  if (mctx !== my) return;
+  renderMenu(); $('#menuBody button')?.focus();
+}
+
+async function copyText(text, okMsg) {
+  try { await navigator.clipboard.writeText(text); }
+  catch {
+    const ta = document.createElement('textarea'); ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  toast(okMsg);
 }
 
 $('#menu').addEventListener('click', (e) => {
@@ -555,6 +680,10 @@ $('#menu').addEventListener('click', (e) => {
   if (a === 'close') { closeMenu(); render(); }
   else if (a === 'addart') { followArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
   else if (a === 'delart') { unfollowArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
+  else if (a === 'copycode') { const S = mctx.share; copyText(S.code || S.payload, S.code ? 'Kode disalin' : 'Kode panjang disalin'); }
+  else if (a === 'copylink') { copyText(mctx.share.link, 'Tautan disalin'); }
+  else if (a === 'nativeshare') { const S = mctx.share; navigator.share({ title: `Playlist ${S.name} di Nada`, text: `Playlist "${S.name}" (${S.count} lagu) di Nada`, url: S.link }).catch(() => {}); }
+  else if (a === 'toimport') { mctx.mode = 'import'; mctx.err = ''; renderMenu(); $('#impCode')?.focus(); }
   else if (a === 'like') { toggleFav(track); closeMenu(); }
   else if (a === 'toplaylist') { mctx.mode = 'pl'; renderMenu(); $('#menuBody button')?.focus(); }
   else if (a === 'backmain') { mctx.mode = 'main'; renderMenu(); $('#menuBody button')?.focus(); }
@@ -574,6 +703,15 @@ $('#menu').addEventListener('submit', (e) => {
     const n = $('#artName').value;
     if (followArtist(n)) { renderMenu(); render(); }
     $('#artName')?.focus();
+    return;
+  }
+  if (e.target.id === 'impForm') { const v = $('#impCode').value; if (v.trim()) importFrom(v); return; }
+  if (e.target.id === 'impSave') {
+    const P = mctx.preview, nm = ($('#impName').value.trim() || P.name).slice(0, 40);
+    const p = { id: uid(), name: nm, tracks: P.tracks.map((t) => ({ id: t.id, title: t.title, artist: t.artist, thumb: t.thumb || thumb(t.id) })) };
+    state.playlists.push(p); store.set('playlists', state.playlists);
+    toast(`Playlist "${nm}" disimpan (${p.tracks.length} lagu)`);
+    closeMenu(); state.tab = 'home'; store.set('tab', 'home'); openView('pl:' + p.id);
     return;
   }
   const name = $('#plName').value.trim();
@@ -865,6 +1003,8 @@ $('#list').addEventListener('click', (e) => {
   if (t.closest('[data-manageart]')) { openMenu(null, null, 'artists'); return; }
   if ((el = t.closest('[data-followart]'))) { const n = el.dataset.followart; if (isFollowing(n)) { unfollowArtist(n); } else followArtist(n, el.closest('.artist')?.querySelector('img')?.src || ''); render(); return; }
   if ((el = t.closest('[data-artist]'))) { runSearch(el.dataset.artist); return; }
+  if ((el = t.closest('[data-share]'))) { openShare(el.dataset.share); return; }
+  if (t.closest('[data-import]')) { openMenu(null, null, 'import'); return; }
   if (t.closest('[data-newpl]')) { openMenu(null, null, 'newpl'); return; }
   if (t.closest('[data-resume]')) { resume(); return; }
   if (t.closest('[data-back]')) { closeView(); return; }
@@ -1032,6 +1172,11 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---------- init ---------- */
+if (/[#?&](c|code|share)=/.test(location.hash)) {
+  const linkText = location.href;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch {}
+  setTimeout(() => { openMenu(null, null, 'import'); importFrom(linkText); }, 300);
+}
 applyLayout(); setPview(state.pview); updateOfficialBtn(); renderControls(); render();
 if (state.tab === 'home' || state.tab === 'library') loadCharts();
 if ('serviceWorker' in navigator) {

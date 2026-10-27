@@ -433,3 +433,14 @@ html.tv .sec { margin-bottom: 1.25rem; }
 html.tv .up { padding: .5rem; } html.tv .up img { width: 4.25rem; } html.tv .up b { font-size: .75rem; } html.tv .up small { font-size: .625rem; }
 html.tv .sheet.idle .video::after { font-size: .8125rem; }
 html.tv .upnext h3 { font-size: .625rem; }
+
+/* ---------- Bagikan / impor playlist ---------- */
+.share-qr { width: min(14rem, 70%); margin: .75rem auto .5rem; padding: .5rem; border-radius: .875rem; background: #fff; }
+.share-qr svg { display: block; width: 100%; height: auto; }
+.share-code { text-align: center; font: 700 1.75rem/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .12em; margin: .5rem 0 .25rem; user-select: all; }
+.share-code i { font-style: normal; color: var(--muted); margin: 0 .1em; }
+.share-note { margin: .375rem .25rem .625rem; color: var(--muted); font-size: .8125rem; line-height: 1.4; text-align: center; }
+.share-note.err { color: var(--accent); }
+#impCode { text-transform: uppercase; letter-spacing: .08em; }
+#impCode::placeholder { text-transform: none; letter-spacing: 0; }
+html.tv .share-qr { width: 11rem; } html.tv .share-code { font-size: 1.5rem; }
