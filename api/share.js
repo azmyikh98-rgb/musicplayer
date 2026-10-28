@@ -69,12 +69,12 @@ module.exports = async (req, res) => {
       return res.status(503).json({ error: 'Gagal membuat kode, coba lagi.' });
     }
     const code = String(req.query.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (!/^[A-Z2-9]{6}$/.test(code)) return res.status(400).json({ error: 'Format kode tidak valid.' });
+    if (!/^[A-Z2-9]{6}$/.test(code)) return res.status(400).json({ error: 'Format kodenya nggak valid.' });
     const raw = await redis(['GET', 'pl:' + code]);
-    if (!raw) return res.status(404).json({ error: 'Kode tidak ditemukan atau sudah kedaluwarsa.' });
+    if (!raw) return res.status(404).json({ error: 'Kodenya nggak ketemu atau udah kedaluwarsa.' });
     return res.status(200).json(JSON.parse(raw));
   } catch (e) {
-    return res.status(502).json({ error: 'Layanan kode sedang tidak bisa dihubungi.' });
+    return res.status(502).json({ error: 'Layanan kodenya lagi nggak bisa dihubungi.' });
   }
 };
 module.exports._clean = clean;

@@ -32,6 +32,6 @@ module.exports = async (req, res) => {
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
     return res.status(200).json({ items: ids.map((id) => byId.get(id)).filter(Boolean) });
   } catch (e) {
-    return res.status(502).json({ error: e.message || 'Gagal memuat data lagu.' });
+    return res.status(502).json({ error: e.message || 'Gagal ambil data lagu.' });
   }
 };

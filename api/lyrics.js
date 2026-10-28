@@ -86,7 +86,7 @@ module.exports = async (req, res) => {
     });
   } catch (e) {
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(502).json({ error: 'Layanan lirik sedang tidak bisa dihubungi.' });
+    return res.status(502).json({ error: 'Layanan liriknya lagi nggak bisa dihubungi.' });
   }
 };
 module.exports._parseLRC = parseLRC;

@@ -142,7 +142,7 @@ function artistsSection() {
   const chips = [`<div class="artist add" data-nav tabindex="0" role="button" data-manageart aria-label="Tambah artis"><div class="av">${ICON.plus}</div><b>Tambah</b></div>`];
   state.artists.forEach((a) => chips.push(
     `<div class="artist" data-nav tabindex="0" role="button" data-artist="${esc(a.name)}" aria-label="Cari lagu ${esc(a.name)}">${avatar(a)}<b>${esc(a.name)}</b></div>`));
-  const body = hscroll(chips) + (state.artists.length ? '' : '<p class="hint">Ikuti artis dari daftar Artis Populer di bawah, atau tap Tambah untuk mengetik namanya.</p>');
+  const body = hscroll(chips) + (state.artists.length ? '' : '<p class="hint">Follow artis dari daftar Artis Populer di bawah, atau tap Tambah buat ngetik nama artisnya.</p>');
   return `<section class="sec"><div class="sec-head"><h2>Artis Favorit</h2><button class="link" data-nav data-manageart>Kelola</button></div>${body}</section>`;
 }
 
@@ -164,7 +164,7 @@ function popularSection() {
   const cards = popularArtists().map((a) => {
     const f = isFollowing(a.name);
     return `<div class="artist pop" data-nav tabindex="0" role="button" data-artist="${esc(a.name)}" aria-label="Cari lagu ${esc(a.name)}">${avatar(a)}<b>${esc(a.name)}</b>
-      <button class="fol${f ? ' on' : ''}" data-followart="${esc(a.name)}" tabindex="-1" aria-label="${f ? 'Berhenti mengikuti' : 'Ikuti'} ${esc(a.name)}">${f ? 'Diikuti' : '+ Ikuti'}</button></div>`;
+      <button class="fol${f ? ' on' : ''}" data-followart="${esc(a.name)}" tabindex="-1" aria-label="${f ? 'Berhenti mengikuti' : 'Ikuti'} ${esc(a.name)}">${f ? 'Difollow' : '+ Follow'}</button></div>`;
   });
   return `<section class="sec"><div class="sec-head"><h2>Artis Populer</h2></div>${hscroll(cards)}</section>`;
 }
@@ -187,7 +187,7 @@ function chartsBlock() {
 
 function homeHTML() {
   const h = new Date().getHours();
-  const greet = h < 11 ? 'Selamat pagi' : h < 15 ? 'Selamat siang' : h < 18 ? 'Selamat sore' : 'Selamat malam';
+  const greet = h < 11 ? 'Pagi, yuk gas!' : h < 15 ? 'Siang, lagi ngapain?' : h < 18 ? 'Sore, waktunya santai' : 'Malam, mau muter apa?';
   const fresh = !state.resume && !state.recent.length && !state.fav.length && !state.artists.length;
   let out = `<div class="home"><h2 class="greet">${greet}</h2>`;
 
@@ -200,15 +200,15 @@ function homeHTML() {
         <span class="play-chip">${ICON.play}</span>
       </div>`;
   } else if (fresh) {
-    out += `<div class="welcome"><b>Selamat datang di Nada</b><p>Cari lagu favoritmu di kolom atas, atau mulai dari tangga lagu dan artis di bawah.</p><button class="pill" data-nav data-focussearch>Cari lagu</button></div>`;
+    out += `<div class="welcome"><b>Halo, selamat datang di Nada!</b><p>Ketik lagu atau artis favoritmu di kolom atas, atau langsung intip yang lagi hits di bawah.</p><button class="pill" data-nav data-focussearch>Cari lagu</button></div>`;
   }
 
   // 2. akses cepat, selalu ada dan tidak pernah kosong
   out += `<div class="quick">`
-    + quickTile('data-open="liked"', ICON.heart, true, 'Liked Songs', state.fav.length ? `${state.fav.length} lagu` : 'Belum ada')
-    + quickTile('data-open="recent"', ICON.clock, false, 'Terakhir diputar', state.recent.length ? `${state.recent.length} lagu` : 'Belum ada')
-    + quickTile('data-open="chartID"', ICON.list, false, 'Top Indonesia', 'Tangga lagu')
-    + quickTile('data-open="chartGLOBAL"', ICON.list, false, 'Top Global', 'Tangga lagu')
+    + quickTile('data-open="liked"', ICON.heart, true, 'Liked Songs', state.fav.length ? `${state.fav.length} lagu` : 'Masih kosong')
+    + quickTile('data-open="recent"', ICON.clock, false, 'Baru diputar', state.recent.length ? `${state.recent.length} lagu` : 'Masih kosong')
+    + quickTile('data-open="chartID"', ICON.list, false, 'Top Indonesia', 'Lagi hits')
+    + quickTile('data-open="chartGLOBAL"', ICON.list, false, 'Top Global', 'Lagi hits')
     + `</div>`;
 
   // 3. terakhir diputar, hanya jika ada
@@ -225,8 +225,8 @@ function homeHTML() {
       <div class="cover${first ? '' : ' ph'}">${first ? `<img src="${imgOf(first)}" alt="" loading="lazy">` : ICON.list}<span class="cnt">${p.tracks.length} lagu</span></div>
       <b>${esc(p.name)}</b><small>Playlist</small></div>`;
   });
-  plCards.unshift(`<div class="card new" data-nav tabindex="0" role="button" data-newpl aria-label="Buat playlist baru"><div class="cover">${ICON.plus}</div><b>Playlist baru</b><small>Buat sendiri</small></div>`);
-  out += section('My Playlist', hscroll(plCards));
+  plCards.unshift(`<div class="card new" data-nav tabindex="0" role="button" data-newpl aria-label="Bikin playlist baru"><div class="cover">${ICON.plus}</div><b>Playlist baru</b><small>Bikin sendiri</small></div>`);
+  out += section('Playlist Kamu', hscroll(plCards));
 
   // 6. liked songs, hanya jika ada (tile di atas sudah jadi pintu masuk saat kosong)
   if (state.fav.length) out += section('Liked Songs', hscroll(state.fav.slice(0, 12).map((t, i) => cardHTML(t, i, 'liked'))), 'liked');
@@ -240,7 +240,7 @@ function searchHTML() {
   if (state.loading) return '<div class="tracks">' + '<div class="skeleton"></div>'.repeat(7) + '</div>';
   if (state.error) return `<div class="tracks"><div class="empty"><b>Ups</b>${esc(state.error)}</div></div>`;
   if (!state.results.length) {
-    return `<div class="tracks"><div class="empty"><b>Mau dengar apa hari ini?</b>Ketik judul lagu atau artis. Filter "Resmi" menyaring reupload, lirik, dan cover.</div></div>`;
+    return `<div class="tracks"><div class="empty"><b>Lagi pengen dengerin apa?</b>Ketik judul lagu atau nama artis. Filter "Resmi" bikin hasilnya bebas reupload, video lirik, dan cover.</div></div>`;
   }
   return '<div class="tracks">' + state.results.map((t, i) => rowHTML(t, i, 'search')).join('') + '</div>';
 }
@@ -250,22 +250,22 @@ function libraryHTML() {
     `<button class="lib" data-nav ${attrs}><span class="ico${g ? ' g' : ''}">${ico}</span><span><b>${title}</b><small>${sub}</small></span></button>`;
   let out = '<div class="home libp">';
   out += lib('data-open="liked"', ICON.heart, true, 'Liked Songs', `${state.fav.length} lagu`);
-  out += lib('data-open="recent"', ICON.clock, false, 'Terakhir diputar', `${state.recent.length} lagu`);
-  out += lib('data-open="chartID"', ICON.list, false, 'Tangga Lagu Indonesia', 'Musik terpopuler di Indonesia');
-  out += lib('data-open="chartGLOBAL"', ICON.list, false, 'Tangga Lagu Global', 'Gabungan beberapa negara');
+  out += lib('data-open="recent"', ICON.clock, false, 'Baru diputar', `${state.recent.length} lagu`);
+  out += lib('data-open="chartID"', ICON.list, false, 'Tangga Lagu Indonesia', 'Lagu-lagu paling hits di Indonesia');
+  out += lib('data-open="chartGLOBAL"', ICON.list, false, 'Tangga Lagu Global', 'Yang lagi hits di berbagai negara');
   out += '<div class="lib-h">Playlist</div>';
-  out += lib('data-newpl', ICON.plus, false, 'Buat playlist baru', 'Kumpulkan lagu pilihanmu');
-  out += lib('data-import', ICON.download, false, 'Impor playlist', 'Pakai kode atau QR dari perangkat lain');
+  out += lib('data-newpl', ICON.plus, false, 'Bikin playlist baru', 'Kumpulin lagu andalanmu');
+  out += lib('data-import', ICON.download, false, 'Impor playlist', 'Pakai kode atau QR dari device lain');
   out += state.playlists.map((p) => lib(`data-pl="${p.id}"`, ICON.list, false, esc(p.name), `${p.tracks.length} lagu`)).join('');
   out += '<div class="lib-h">Artis favorit</div>';
-  out += lib('data-manageart', ICON.plus, false, 'Tambah / kelola artis', 'Ikuti artis favoritmu');
+  out += lib('data-manageart', ICON.plus, false, 'Tambah / atur artis', 'Follow artis favoritmu');
   out += state.artists.length
     ? state.artists.map((a) => lib(`data-artist="${esc(a.name)}"`, ICON.user, false, esc(a.name), 'Cari lagu artis ini')).join('')
     : '';
   return out + '</div>';
 }
 
-const VIEW_TITLES = { liked: 'Liked Songs', recent: 'Terakhir diputar', chartID: 'Tangga Lagu Indonesia', chartGLOBAL: 'Tangga Lagu Global' };
+const VIEW_TITLES = { liked: 'Liked Songs', recent: 'Baru diputar', chartID: 'Tangga Lagu Indonesia', chartGLOBAL: 'Tangga Lagu Global' };
 
 function viewHTML() {
   const ctx = state.view.ctx;
@@ -276,7 +276,7 @@ function viewHTML() {
   const isChart = ctx.startsWith('chart');
   let body;
   if (isChart && !tracks.length) body = state.charts.err[ctx.slice(5)] ? `<div class="empty">${esc(state.charts.err[ctx.slice(5)])}</div>` : '<div class="skeleton"></div>'.repeat(6);
-  else if (!tracks.length) body = `<div class="empty"><b>Belum ada lagu</b>${isPl ? 'Cari lagu, lalu tambahkan lewat menu titik tiga pada lagu.' : 'Daftar ini masih kosong.'}${isPl ? '<br><button class="pill big" data-nav data-focussearch style="margin-top:1rem">' + ICON.search + '<span>Cari lagu</span></button>' : ''}</div>`;
+  else if (!tracks.length) body = `<div class="empty"><b>Masih kosong nih</b>${isPl ? 'Cari lagu dulu, terus masukin lewat menu titik tiga di lagunya.' : 'Belum ada isinya.'}${isPl ? '<br><button class="pill big" data-nav data-focussearch style="margin-top:1rem">' + ICON.search + '<span>Cari lagu</span></button>' : ''}</div>`;
   else body = tracks.map((t, i) => rowHTML(t, i, ctx, isChart)).join('');
   const n = tracks.length;
   const kind = isPl ? 'Playlist' : ctx === 'liked' ? 'Lagu yang kamu sukai' : ctx === 'recent' ? 'Riwayat' : 'Tangga lagu';
@@ -336,7 +336,7 @@ function renderUpnext() {
   const q = state.queue, next = [];
   for (let i = state.idx + 1; i < q.length && next.length < 8; i++) next.push(i);
   if (!next.length) { el.innerHTML = ''; return; }
-  el.innerHTML = `<h3>Berikutnya${state.shuffle ? ' <small>(urutan acak aktif)</small>' : ''}</h3>` + next.map((i) =>
+  el.innerHTML = `<h3>Berikutnya${state.shuffle ? ' <small>(lagi mode acak)</small>' : ''}</h3>` + next.map((i) =>
     `<div class="up" data-nav tabindex="0" role="button" data-upi="${i}" aria-label="Putar ${esc(q[i].title)}"><img src="${imgOf(q[i])}" alt="" loading="lazy"><span class="meta"><b>${esc(q[i].title)}</b><small>${esc(q[i].artist)}</small></span></div>`).join('');
 }
 
@@ -390,11 +390,11 @@ function loadCharts() {
     fetch(`/api/charts?region=${key}`)
       .then((r) => r.json().then((d) => ({ ok: r.ok, d })))
       .then(({ ok, d }) => {
-        if (!ok) throw new Error(d.error || 'Gagal memuat tangga lagu.');
+        if (!ok) throw new Error(d.error || 'Yah, tangga lagunya gagal dimuat.');
         state.charts[key] = d.items || [];
         try { sessionStorage.setItem('chart' + key, JSON.stringify({ t: Date.now(), items: state.charts[key] })); } catch {}
       })
-      .catch((e) => { state.charts.err[key] = e.message || 'Gagal memuat tangga lagu.'; })
+      .catch((e) => { state.charts.err[key] = e.message || 'Yah, tangga lagunya gagal dimuat.'; })
       .finally(() => { if ((state.tab === 'home' || state.tab === 'library' || state.view) && !$('#list').matches(':active')) render(); });
   }
 }
@@ -420,24 +420,24 @@ async function search(q) {
     const id = /^https?:\/\//i.test(q) ? parseVideoId(q) : null;
     if (id) {
       const r = await fetch(`https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + id)}&format=json`);
-      if (!r.ok) throw new Error('Link tidak bisa dibuka atau pemilik melarang pemutaran di luar YouTube.');
+      if (!r.ok) throw new Error('Link-nya nggak bisa dibuka, atau pemiliknya nggak ngizinin diputar di luar YouTube.');
       const d = await r.json();
       state.results = [{ id, title: d.title, artist: d.author_name.replace(/ - Topic$/, ''), thumb: thumb(id) }];
     } else {
       const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&official=${state.official ? 1 : 0}`);
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error || 'Pencarian gagal.');
+      if (!r.ok) throw new Error(d.error || 'Pencarian gagal, coba lagi ya.');
       state.results = d.items;
       if (!d.items.length) {
         state.error = state.official
-          ? `Tidak ada musik resmi untuk "${q}". Coba kata kunci lain, atau matikan filter Resmi.`
-          : 'Tidak ada hasil. Coba kata kunci lain.';
+          ? `Nggak nemu musik resmi buat "${q}". Coba kata kunci lain, atau matiin filter Resmi.`
+          : 'Yah, nggak ketemu. Coba kata kunci lain deh.';
       }
     }
     store.set('lastResults', state.results);
     state.results.forEach(backfillArtist);
   } catch (e) {
-    state.error = e.message || 'Terjadi kesalahan.';
+    state.error = e.message || 'Ada yang error nih, coba lagi ya.';
   }
   state.loading = false; render();
   if (state.tv) $('#list .row')?.focus();
@@ -495,25 +495,25 @@ function toggleFav(t) {
 
 function followArtist(name, thumbUrl = '') {
   name = name.trim().slice(0, 40);
-  if (!name || isFollowing(name)) { if (name) toast(`${name} sudah diikuti`); return false; }
+  if (!name || isFollowing(name)) { if (name) toast(`${name} udah kamu follow`); return false; }
   state.artists = [{ name, thumb: thumbUrl }, ...state.artists];
   store.set('artists', state.artists);
-  toast(`Mengikuti ${name}`);
+  toast(`Sekarang kamu follow ${name}`);
   return true;
 }
 function unfollowArtist(name) {
   state.artists = state.artists.filter((a) => lc(a.name) !== lc(name));
   store.set('artists', state.artists);
-  toast(`Berhenti mengikuti ${name}`);
+  toast(`Unfollow ${name}`);
 }
 
 function toggleArtist(t) {
   if (isFollowing(t.artist)) {
     state.artists = state.artists.filter((a) => lc(a.name) !== lc(t.artist));
-    toast(`Berhenti mengikuti ${t.artist}`);
+    toast(`Unfollow ${t.artist}`);
   } else {
     state.artists = [{ name: t.artist, thumb: t.thumb || thumb(t.id) }, ...state.artists];
-    toast(`Mengikuti ${t.artist}`);
+    toast(`Sekarang kamu follow ${t.artist}`);
   }
   store.set('artists', state.artists);
 }
@@ -527,10 +527,10 @@ function backfillArtist(t) {
 function addToPlaylist(pid, t) {
   const p = state.playlists.find((x) => x.id === pid);
   if (!p) return;
-  if (p.tracks.some((x) => x.id === t.id)) { toast(`Sudah ada di ${p.name}`); return; }
+  if (p.tracks.some((x) => x.id === t.id)) { toast(`Udah ada di ${p.name}`); return; }
   p.tracks.push(slim(t));
   store.set('playlists', state.playlists);
-  toast(`Ditambahkan ke ${p.name}`);
+  toast(`Masuk ke ${p.name}`);
 }
 
 let mctx = null;
@@ -554,7 +554,7 @@ function renderMenu() {
   if (mode === 'main') {
     h += act('like', ICON.heart, isFav(track.id) ? 'Hapus dari Liked Songs' : 'Tambah ke Liked Songs', isFav(track.id));
     h += act('toplaylist', ICON.list, 'Tambah ke playlist');
-    h += act('follow', ICON.user, isFollowing(track.artist) ? `Berhenti ikuti ${track.artist}` : `Ikuti ${track.artist}`, isFollowing(track.artist));
+    h += act('follow', ICON.user, isFollowing(track.artist) ? `Unfollow ${track.artist}` : `Follow ${track.artist}`, isFollowing(track.artist));
     h += act('artistsearch', ICON.search, `Cari lagu dari ${track.artist}`);
     if (ctx && ctx.startsWith('pl:')) h += act('rmpl', ICON.trash, 'Hapus dari playlist ini');
     h += act('close', ICON.back, 'Tutup');
@@ -565,8 +565,8 @@ function renderMenu() {
   } else if (mode === 'artists') {
     h += '<div class="sub">Tambah artis favorit</div><form id="artForm"><input id="artName" type="text" maxlength="40" placeholder="Nama artis" aria-label="Nama artis"><button class="pill" type="submit">Tambah</button></form>';
     const sug = STARTER_ARTISTS.filter((n) => !isFollowing(n)).slice(0, 8);
-    if (sug.length) h += '<div class="sub">Saran</div>' + sug.map((n) => act('addart', ICON.plus, n, false, `data-name="${esc(n)}"`)).join('');
-    if (state.artists.length) h += '<div class="sub">Diikuti (tap untuk berhenti mengikuti)</div>' + state.artists.map((a) => act('delart', ICON.trash, a.name, true, `data-name="${esc(a.name)}"`)).join('');
+    if (sug.length) h += '<div class="sub">Rekomendasi</div>' + sug.map((n) => act('addart', ICON.plus, n, false, `data-name="${esc(n)}"`)).join('');
+    if (state.artists.length) h += '<div class="sub">Yang kamu follow (tap buat unfollow)</div>' + state.artists.map((a) => act('delart', ICON.trash, a.name, true, `data-name="${esc(a.name)}"`)).join('');
     h += act('close', ICON.back, 'Selesai');
   } else if (mode === 'share') {
     const S = mctx.share;
@@ -574,40 +574,40 @@ function renderMenu() {
     if (S.status === 'loading') h += '<p class="share-note">Membuat kode…</p>';
     else {
       if (S.qr) h += `<div class="share-qr">${S.qr}</div>`;
-      if (S.code) h += `<div class="share-code" aria-label="Kode ${esc(S.code)}">${esc(S.code)}</div><p class="share-note">Pindai QR dengan kamera HP, atau ketik kode ini lewat menu Impor di Nada. Berlaku 30 hari.</p>`;
-      else h += `<div class="share-long" tabindex="0" aria-label="Kode panjang">${esc(S.payload)}</div><p class="share-note">${S.long ? 'Playlist ini terlalu panjang untuk QR. ' : 'Pindai QR dengan kamera HP, atau salin kode di atas dan tempel lewat menu Impor. '}${S.nostore ? 'Kode pendek 6 karakter (untuk diketik di TV) aktif setelah Upstash Redis disambungkan di Vercel.' : ''}</p>`;
+      if (S.code) h += `<div class="share-code" aria-label="Kode ${esc(S.code)}">${esc(S.code)}</div><p class="share-note">Scan QR pakai kamera HP, atau ketik kode ini lewat menu Impor di Nada. Aktif 30 hari.</p>`;
+      else h += `<div class="share-long" tabindex="0" aria-label="Kode panjang">${esc(S.payload)}</div><p class="share-note">${S.long ? 'Playlist ini kepanjangan buat QR. ' : 'Scan QR pakai kamera HP, atau salin kode di atas terus tempel lewat menu Impor. '}${S.nostore ? 'Kode pendek 6 karakter (enak buat diketik di TV) belum aktif, perlu Redis disambungkan di Vercel dulu.' : ''}</p>`;
       h += act('copycode', ICON.list, S.code ? 'Salin kode' : 'Salin kode panjang') + act('copylink', ICON.share, 'Salin tautan');
       if (navigator.share) h += act('nativeshare', ICON.share, 'Bagikan lewat…');
     }
     h += act('close', ICON.back, 'Selesai');
   } else if (mode === 'import') {
     h += '<div class="sub">Impor playlist</div>';
-    if (canScan() && !mctx.busy) h += act('scan', ICON.scan, 'Pindai QR dengan kamera');
-    if (mctx.busy) h += '<p class="share-note">Memuat playlist…</p>';
+    if (canScan() && !mctx.busy) h += act('scan', ICON.scan, 'Scan QR pakai kamera');
+    if (mctx.busy) h += '<p class="share-note">Lagi ngambil playlist…</p>';
     else {
       h += '<form id="impForm"><input id="impCode" type="text" maxlength="2000" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Kode 6 karakter atau tautan" aria-label="Kode playlist"><button class="pill" type="submit">Cari</button></form>';
-      h += '<p class="share-note">Ketik kode dari perangkat lain, atau tempel tautan yang dibagikan. Di HP, pindai QR dengan kamera bawaan.</p>';
+      h += '<p class="share-note">Ketik kode dari device lain, atau tempel link yang dibagiin. Di HP, scan QR pakai kamera bawaan juga bisa.</p>';
       if (mctx.err) h += `<p class="share-note err">${esc(mctx.err)}</p>`;
     }
     h += act('close', ICON.back, 'Tutup');
   } else if (mode === 'scan') {
-    h += '<div class="sub">Pindai kode QR</div>';
+    h += '<div class="sub">Scan kode QR</div>';
     h += '<div class="scan-box"><video id="scanVideo" playsinline muted></video></div>';
-    h += `<p class="share-note${mctx.scanErr ? ' err' : ''}" id="scanNote">${esc(mctx.scanErr || 'Arahkan kamera ke kode QR playlist Nada.')}</p>`;
+    h += `<p class="share-note${mctx.scanErr ? ' err' : ''}" id="scanNote">${esc(mctx.scanErr || 'Arahkan kamera ke QR playlist Nada ya.')}</p>`;
     h += act('toimport', ICON.list, 'Ketik kode manual') + act('close', ICON.back, 'Batal');
   } else if (mode === 'preview') {
     const P = mctx.preview;
-    h += '<div class="sub">Playlist ditemukan</div>';
+    h += '<div class="sub">Playlist ketemu!</div>';
     h += `<form id="impSave"><input id="impName" type="text" maxlength="40" value="${esc(P.name)}" aria-label="Nama playlist"><button class="pill" type="submit">Simpan</button></form>`;
     h += `<p class="share-note">${P.tracks.length} lagu: ${esc(P.tracks.slice(0, 3).map((t) => t.title).join(', '))}${P.tracks.length > 3 ? ', …' : ''}</p>`;
     h += act('toimport', ICON.back, 'Kembali') + act('close', ICON.back, 'Batal');
   } else {
     const tile = (a, ico, t, d) => `<button class="np-tile" data-act="${a}">${ico}<b>${t}</b><small>${d}</small></button>`;
-    h += `<div class="np-head"><span class="np-ico">${ICON.plus}</span><div><b>Playlist baru</b><small>Beri nama, lalu tambahkan lagu lewat menu titik tiga.</small></div></div>`;
+    h += `<div class="np-head"><span class="np-ico">${ICON.plus}</span><div><b>Playlist baru</b><small>Kasih nama dulu, lagunya nanti kamu masukin lewat menu titik tiga.</small></div></div>`;
     h += newPlForm;
-    h += '<div class="np-chips" role="group" aria-label="Saran nama">' + ['Favorit', 'Santai', 'Semangat', 'Perjalanan', 'Fokus'].map((n) => `<button type="button" class="np-chip" data-act="plname" data-v="${n}">${n}</button>`).join('') + '</div>';
-    h += '<div class="np-or"><span>atau impor dari perangkat lain</span></div>';
-    h += '<div class="np-tiles">' + (canScan() ? tile('scan', ICON.scan, 'Pindai QR', 'Arahkan kamera') : '') + tile('toimport', ICON.download, 'Ketik kode', '6 karakter') + '</div>';
+    h += '<div class="np-chips" role="group" aria-label="Saran nama">' + ['Galau', 'Santai', 'Semangat', 'Road Trip', 'Fokus'].map((n) => `<button type="button" class="np-chip" data-act="plname" data-v="${n}">${n}</button>`).join('') + '</div>';
+    h += '<div class="np-or"><span>atau impor dari device lain</span></div>';
+    h += '<div class="np-tiles">' + (canScan() ? tile('scan', ICON.scan, 'Scan QR', 'Arahkan kamera') : '') + tile('toimport', ICON.download, 'Ketik kode', '6 karakter') + '</div>';
     h += act('close', ICON.back, 'Tutup');
   }
   $('#menuBody').innerHTML = h;
@@ -635,24 +635,24 @@ function parseShareInput(text) {
 
 async function resolveShare(text) {
   const p = parseShareInput(text);
-  if (!p) throw new Error('Kode tidak dikenali. Periksa lagi atau tempel tautannya.');
+  if (!p) throw new Error('Kodenya nggak dikenali. Cek lagi atau tempel link-nya.');
   if (p.code) {
     const r = await fetch('/api/share?code=' + encodeURIComponent(p.code));
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || 'Kode tidak ditemukan.');
+    if (!r.ok) throw new Error(d.error || 'Kodenya nggak ketemu.');
     return { name: d.name || 'Playlist', tracks: (d.tracks || []).map((t) => ({ id: t.id, title: t.title, artist: t.artist, thumb: thumb(t.id) })) };
   }
-  let o; try { o = JSON.parse(b64u.dec(p.payload)); } catch { throw new Error('Kode rusak atau terpotong. Salin ulang dari awal.'); }
+  let o; try { o = JSON.parse(b64u.dec(p.payload)); } catch { throw new Error('Kodenya rusak atau kepotong. Salin ulang dari awal ya.'); }
   const ids = String(o.i || '').match(/[\w-]{11}/g) || [];
-  if (!ids.length) throw new Error('Playlist ini kosong.');
+  if (!ids.length) throw new Error('Playlist ini kosong, nggak ada yang bisa diimpor.');
   const tracks = [];
   for (let i = 0; i < ids.length; i += 50) {
     const r = await fetch('/api/videos?ids=' + ids.slice(i, i + 50).join(','));
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || 'Data lagu tidak bisa dimuat.');
+    if (!r.ok) throw new Error(d.error || 'Data lagunya gagal dimuat.');
     (d.items || []).forEach((t) => tracks.push({ id: t.id, title: t.title, artist: t.artist, thumb: thumb(t.id) }));
   }
-  if (!tracks.length) throw new Error('Lagu dalam playlist ini tidak ditemukan.');
+  if (!tracks.length) throw new Error('Lagu di playlist ini nggak ketemu.');
   return { name: String(o.n || 'Playlist').slice(0, 40), tracks };
 }
 
@@ -666,14 +666,14 @@ async function importFrom(text) {
     $('#impName')?.focus();
   } catch (e) {
     if (mctx !== my) return;
-    my.busy = false; my.mode = 'import'; my.err = e.message || 'Gagal memuat.'; renderMenu();
+    my.busy = false; my.mode = 'import'; my.err = e.message || 'Gagal memuat, coba lagi ya.'; renderMenu();
     $('#impCode')?.focus();
   }
 }
 
 async function openShare(ctx) {
   const tracks = ctxTracks(ctx);
-  if (!tracks.length) { toast('Playlist masih kosong'); return; }
+  if (!tracks.length) { toast('Playlistnya masih kosong'); return; }
   const pl = ctx.startsWith('pl:') ? state.playlists.find((p) => p.id === ctx.slice(3)) : null;
   const name = pl ? pl.name : 'Liked Songs';
   const list = tracks.slice(0, 200).map((t) => ({ id: t.id, title: t.title, artist: t.artist }));
@@ -696,7 +696,7 @@ async function openShare(ctx) {
 }
 
 
-/* ---------- Pindai QR dengan kamera ---------- */
+/* ---------- Scan QR dengan kamera ---------- */
 let scanStream = null, scanRaf = 0, scanBusy = false, scanLast = '', scanLastAt = 0;
 const canScan = () => !state.tv && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
 
@@ -724,7 +724,7 @@ async function startScan() {
   try {
     scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
   } catch (e) {
-    fail(e && e.name === 'NotAllowedError' ? 'Izin kamera ditolak. Aktifkan izin kamera untuk Nada di pengaturan, atau ketik kodenya.' : 'Kamera tidak tersedia. Ketik kodenya secara manual.');
+    fail(e && e.name === 'NotAllowedError' ? 'Izin kameranya ditolak nih. Aktifin dulu di pengaturan, atau ketik kodenya aja.' : 'Kameranya nggak bisa dipakai. Ketik kodenya manual aja ya.');
     return;
   }
   if (mctx !== my || my.mode !== 'scan') { stopScan(); return; }
@@ -733,7 +733,7 @@ async function startScan() {
   let detector = null;
   if ('BarcodeDetector' in window) { try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch {} }
   let jsqr = null;
-  if (!detector) { try { jsqr = await loadJsQR(); } catch { fail('Pemindai gagal dimuat. Ketik kodenya secara manual.'); stopScan(); return; } }
+  if (!detector) { try { jsqr = await loadJsQR(); } catch { fail('Scanner-nya gagal dimuat. Ketik kodenya manual aja ya.'); stopScan(); return; } }
   const canvas = document.createElement('canvas'), cx = canvas.getContext('2d', { willReadFrequently: true });
   let lastTick = 0;
   const tick = async (ts) => {
@@ -757,14 +757,14 @@ async function startScan() {
           my.mode = 'import'; importFrom(text);
         } else if (text !== scanLast || Date.now() - scanLastAt > 3000) {
           scanLast = text; scanLastAt = Date.now();
-          const n = $('#scanNote'); if (n) { n.textContent = 'QR ini bukan kode playlist Nada. Coba kode yang lain.'; n.classList.add('err'); }
+          const n = $('#scanNote'); if (n) { n.textContent = 'Ini bukan QR playlist Nada. Coba QR yang lain.'; n.classList.add('err'); }
         }
       }
     } catch {} finally { scanBusy = false; }
   };
   scanRaf = requestAnimationFrame(tick);
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden && mctx && mctx.mode === 'scan') { stopScan(); mctx.scanErr = 'Pemindaian dihentikan saat aplikasi ditinggalkan.'; renderMenu(); } });
+document.addEventListener('visibilitychange', () => { if (document.hidden && mctx && mctx.mode === 'scan') { stopScan(); mctx.scanErr = 'Scan berhenti karena kamu keluar dari aplikasi.'; renderMenu(); } });
 
 async function copyText(text, okMsg) {
   try { await navigator.clipboard.writeText(text); }
@@ -786,8 +786,8 @@ $('#menu').addEventListener('click', (e) => {
   if (a === 'close') { closeMenu(); render(); }
   else if (a === 'addart') { followArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
   else if (a === 'delart') { unfollowArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
-  else if (a === 'copycode') { const S = mctx.share; copyText(S.code || S.payload, S.code ? 'Kode disalin' : 'Kode panjang disalin'); }
-  else if (a === 'copylink') { copyText(mctx.share.link, 'Tautan disalin'); }
+  else if (a === 'copycode') { const S = mctx.share; copyText(S.code || S.payload, S.code ? 'Kode udah disalin' : 'Kode panjang udah disalin'); }
+  else if (a === 'copylink') { copyText(mctx.share.link, 'Link udah disalin'); }
   else if (a === 'nativeshare') { const S = mctx.share; navigator.share({ title: `Playlist ${S.name} di Nada`, text: `Playlist "${S.name}" (${S.count} lagu) di Nada`, url: S.link }).catch(() => {}); }
   else if (a === 'scan') { startScan(); }
   else if (a === 'toimport') { mctx.mode = 'import'; mctx.err = ''; renderMenu(); $('#impCode')?.focus(); }
@@ -799,7 +799,7 @@ $('#menu').addEventListener('click', (e) => {
   else if (a === 'artistsearch') { closeMenu(); runSearch(track.artist); }
   else if (a === 'rmpl') {
     const p = state.playlists.find((x) => x.id === ctx.slice(3));
-    if (p) { p.tracks = p.tracks.filter((x) => x.id !== track.id); store.set('playlists', state.playlists); toast('Dihapus dari playlist'); }
+    if (p) { p.tracks = p.tracks.filter((x) => x.id !== track.id); store.set('playlists', state.playlists); toast('Udah dihapus dari playlist'); }
     closeMenu(); render();
   }
 });
@@ -817,7 +817,7 @@ $('#menu').addEventListener('submit', (e) => {
     const P = mctx.preview, nm = ($('#impName').value.trim() || P.name).slice(0, 40);
     const p = { id: uid(), name: nm, tracks: P.tracks.map((t) => ({ id: t.id, title: t.title, artist: t.artist, thumb: t.thumb || thumb(t.id) })) };
     state.playlists.push(p); store.set('playlists', state.playlists);
-    toast(`Playlist "${nm}" disimpan (${p.tracks.length} lagu)`);
+    toast(`Playlist "${nm}" udah tersimpan (${p.tracks.length} lagu)`);
     closeMenu(); state.tab = 'home'; store.set('tab', 'home'); openView('pl:' + p.id);
     return;
   }
@@ -827,7 +827,7 @@ $('#menu').addEventListener('submit', (e) => {
   state.playlists.push(p);
   if (mctx && mctx.track) p.tracks.push(slim(mctx.track));
   store.set('playlists', state.playlists);
-  toast(mctx && mctx.track ? `Playlist "${name}" dibuat dan lagu ditambahkan` : `Playlist "${name}" dibuat`);
+  toast(mctx && mctx.track ? `Playlist "${name}" jadi, lagunya udah masuk` : `Playlist "${name}" jadi!`);
   const fromHome = !(mctx && mctx.track);
   closeMenu();
   if (fromHome) openView('pl:' + p.id); else render();
@@ -857,7 +857,7 @@ window.onYouTubeIframeAPIReady = () => {
         } else if (e.data === S.ENDED) { setPlaying(false); next(true); }
       },
       onError() {
-        toast('Lagu ini tidak bisa diputar di luar YouTube, lanjut ke berikutnya…');
+        toast('Lagu ini nggak bisa diputar di luar YouTube, skip ke yang berikutnya…');
         setTimeout(() => next(true), 1200);
       },
     },
@@ -968,7 +968,7 @@ function renderLyrics() {
   if (L.status === 'loading') { el.innerHTML = '<div class="ly-sk" style="width:80%"></div><div class="ly-sk" style="width:60%"></div><div class="ly-sk" style="width:72%"></div><div class="ly-sk" style="width:50%"></div>'; return; }
   if (L.status === 'instrumental') { el.innerHTML = '<p class="ly-msg">Lagu instrumental, tidak ada lirik.</p>'; return; }
   if (L.status !== 'ok') {
-    el.innerHTML = `<p class="ly-msg">${L.status === 'err' ? 'Lirik tidak bisa dimuat sekarang.' : 'Lirik lagu ini belum tersedia.'}<br><a href="${lyrSearchLink(t)}" target="_blank" rel="noopener">Cari di Google</a></p>`;
+    el.innerHTML = `<p class="ly-msg">${L.status === 'err' ? 'Liriknya lagi nggak bisa dimuat.' : 'Lirik lagu ini belum ada nih.'}<br><a href="${lyrSearchLink(t)}" target="_blank" rel="noopener">Cari di Google</a></p>`;
     return;
   }
   const off = lyrOff();
@@ -1096,7 +1096,7 @@ $('#suggest').addEventListener('click', (e) => {
 function updateOfficialBtn() { $('#officialBtn').setAttribute('aria-pressed', String(state.official)); }
 $('#officialBtn').addEventListener('click', () => {
   state.official = !state.official; store.set('official', state.official); updateOfficialBtn();
-  toast(state.official ? 'Hanya musik resmi' : 'Semua hasil, termasuk reupload');
+  toast(state.official ? 'Cuma musik resmi' : 'Semua hasil, termasuk reupload');
   if (state.q && state.tab === 'search') search(state.q);
 });
 
@@ -1130,7 +1130,7 @@ $('#list').addEventListener('click', (e) => {
     if (!state.confirmDel) { state.confirmDel = true; render(); setTimeout(() => { if (state.confirmDel) { state.confirmDel = false; if (state.view) render(); } }, 4000); return; }
     const id = state.view.ctx.slice(3);
     state.playlists = state.playlists.filter((p) => p.id !== id); store.set('playlists', state.playlists);
-    state.confirmDel = false; state.view = null; toast('Playlist dihapus'); render();
+    state.confirmDel = false; state.view = null; toast('Playlist udah dihapus'); render();
   }
 });
 
@@ -1169,7 +1169,7 @@ $('#shuffle').addEventListener('click', () => { state.shuffle = !state.shuffle; 
 $('#repeat').addEventListener('click', () => {
   state.repeat = { off: 'all', all: 'one', one: 'off' }[state.repeat];
   store.set('repeat', state.repeat); renderControls();
-  toast({ off: 'Ulangi: mati', all: 'Ulangi semua', one: 'Ulangi satu lagu' }[state.repeat]);
+  toast({ off: 'Ulangi: off', all: 'Ulangi semua', one: 'Ulangi satu lagu' }[state.repeat]);
 });
 
 const seekEl = $('#seek');
@@ -1201,7 +1201,7 @@ window.addEventListener('resize', applyLayout);
 $('#tvToggle').addEventListener('click', () => {
   state.tv = !state.tv; store.set('tv', state.tv);
   applyLayout(); render(); $('#tvToggle').focus();
-  toast(state.tv ? 'Mode TV aktif: pakai tombol panah remote' : 'Mode TV dimatikan');
+  toast(state.tv ? 'Mode TV nyala: pakai tombol panah di remote' : 'Mode TV mati');
 });
 
 /* ---------- keyboard (desktop) & remote (TV) ---------- */

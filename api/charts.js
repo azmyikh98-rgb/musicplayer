@@ -72,6 +72,6 @@ module.exports = async (req, res) => {
     res.setHeader('Cache-Control', 's-maxage=21600, stale-while-revalidate=86400');
     return res.status(200).json({ items });
   } catch (e) {
-    return res.status(502).json({ error: e.message || 'Gagal memuat tangga lagu.' });
+    return res.status(502).json({ error: e.message || 'Yah, tangga lagunya gagal dimuat.' });
   }
 };

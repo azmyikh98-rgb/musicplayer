@@ -109,7 +109,7 @@ module.exports = async (req, res) => {
     res.setHeader('Cache-Control', 's-maxage=86400, stale-while-revalidate=604800');
     return res.status(200).json({ items: ranked.slice(0, 30).map(({ score, ...r }) => r) });
   } catch (e) {
-    return res.status(500).json({ error: 'Terjadi kesalahan server.' });
+    return res.status(500).json({ error: 'Servernya lagi error, coba lagi ya.' });
   }
 };
 module.exports._rank = rank;
