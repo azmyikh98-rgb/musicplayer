@@ -2,14 +2,22 @@
 // GET  /api/share?code=K7M42Q                             -> {name, tracks}
 // Kode pendek 6 karakter untuk berbagi playlist antar perangkat (juga bisa diketik di TV).
 // Daftar lagu dititipkan di Redis (Upstash) selama 30 hari, tanpa akun dan tanpa data pribadi.
-// Jika Redis belum tersambung, fungsi ini menjawab 501 dan aplikasi memakai tautan panjang sebagai cadangan.
+// Cek status: /api/share?status=1. Jika Redis belum tersambung, fungsi ini menjawab 501 dan aplikasi memakai tautan panjang sebagai cadangan.
 
 const crypto = require('crypto');
 const ALPHA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';   // tanpa 0/O/1/I agar tidak membingungkan
 const TTL = 60 * 60 * 24 * 30;
 
-const REST_URL = () => process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const REST_TOKEN = () => process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+// Vercel bisa memberi awalan sendiri (mis. STORAGE_KV_REST_API_URL), jadi cari semua nama yang berakhiran sama.
+function envBy(suffixes) {
+  for (const s of suffixes) if (process.env[s]) return process.env[s];
+  for (const k of Object.keys(process.env)) {
+    if (suffixes.some((s) => k.endsWith('_' + s)) && process.env[k]) return process.env[k];
+  }
+  return '';
+}
+const REST_URL = () => envBy(['KV_REST_API_URL', 'UPSTASH_REDIS_REST_URL']);
+const REST_TOKEN = () => envBy(['KV_REST_API_TOKEN', 'UPSTASH_REDIS_REST_TOKEN']);
 
 async function redis(args) {
   const r = await fetch(REST_URL(), {
@@ -40,6 +48,11 @@ function clean(body) {
 
 module.exports = async (req, res) => {
   res.setHeader('Cache-Control', 'no-store');
+  // Cek status: buka /api/share?status=1 (tidak menampilkan rahasia apa pun)
+  if (req.query && req.query.status) {
+    const names = Object.keys(process.env).filter((k) => /REST_API_URL|REDIS_REST_URL|REDIS_URL|KV_/.test(k));
+    return res.status(200).json({ ready: !!(REST_URL() && REST_TOKEN()), variabelTerdeteksi: names });
+  }
   if (!REST_URL() || !REST_TOKEN()) {
     return res.status(501).json({ nostore: true, error: 'Kode pendek belum diaktifkan. Sambungkan Upstash Redis di Vercel.' });
   }
