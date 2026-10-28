@@ -481,3 +481,25 @@ html.tv .share-qr { width: 11rem; } html.tv .share-code { font-size: 1.5rem; }
 .scan-box { position: relative; width: min(18rem, 80%); aspect-ratio: 1; margin: .5rem auto; border-radius: 1rem; overflow: hidden; background: #000; }
 .scan-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .scan-box::after { content: ''; position: absolute; inset: 16%; border-radius: .75rem; border: 3px solid rgba(255,255,255,.9); box-shadow: 0 0 0 999px rgba(0,0,0,.4); pointer-events: none; }
+
+/* ---------- Menu Playlist baru ---------- */
+.np-head { display: flex; align-items: center; gap: .875rem; padding: .25rem .25rem .5rem; }
+.np-head b { display: block; font-size: 1.125rem; }
+.np-head small { color: var(--muted); font-size: .8125rem; line-height: 1.35; display: block; }
+.np-ico { width: 3rem; height: 3rem; border-radius: .875rem; display: grid; place-items: center; flex: none; color: #fff; background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+.np-ico svg { width: 1.5rem; height: 1.5rem; }
+.np-chips { display: flex; flex-wrap: wrap; gap: .5rem; padding: .25rem 0 .5rem; }
+.np-chip { padding: .4rem .85rem; border-radius: 1rem; background: var(--panel-2); color: var(--muted); font-size: .8125rem; font-weight: 600; outline: none; }
+.np-chip:active { background: #2e2e3c; color: var(--text); }
+.np-chip:focus-visible { outline: .1875rem solid #fff; outline-offset: .125rem; }
+.np-or { display: flex; align-items: center; gap: .75rem; margin: .75rem 0 .625rem; color: var(--muted); font-size: .75rem; }
+.np-or::before, .np-or::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.np-tiles { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: .625rem; padding-bottom: .5rem; }
+.np-tile { display: flex; flex-direction: column; align-items: flex-start; gap: .125rem; padding: .875rem; border-radius: 1rem; background: var(--panel-2); text-align: left; outline: none; }
+.np-tile svg { width: 1.5rem; height: 1.5rem; color: var(--accent); margin-bottom: .375rem; }
+.np-tile b { font-size: .9375rem; }
+.np-tile small { color: var(--muted); font-size: .75rem; }
+.np-tile:active { background: #2e2e3c; }
+.np-tile:focus-visible { outline: .1875rem solid #fff; outline-offset: .1875rem; }
+#plGo:disabled { opacity: .45; }
+.empty .pill.big svg { fill: none; stroke: currentColor; }

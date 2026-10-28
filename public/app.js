@@ -276,7 +276,7 @@ function viewHTML() {
   const isChart = ctx.startsWith('chart');
   let body;
   if (isChart && !tracks.length) body = state.charts.err[ctx.slice(5)] ? `<div class="empty">${esc(state.charts.err[ctx.slice(5)])}</div>` : '<div class="skeleton"></div>'.repeat(6);
-  else if (!tracks.length) body = `<div class="empty"><b>Belum ada lagu</b>${isPl ? 'Tambahkan lewat menu titik tiga pada lagu.' : 'Daftar ini masih kosong.'}</div>`;
+  else if (!tracks.length) body = `<div class="empty"><b>Belum ada lagu</b>${isPl ? 'Cari lagu, lalu tambahkan lewat menu titik tiga pada lagu.' : 'Daftar ini masih kosong.'}${isPl ? '<br><button class="pill big" data-nav data-focussearch style="margin-top:1rem">' + ICON.search + '<span>Cari lagu</span></button>' : ''}</div>`;
   else body = tracks.map((t, i) => rowHTML(t, i, ctx, isChart)).join('');
   const n = tracks.length;
   const kind = isPl ? 'Playlist' : ctx === 'liked' ? 'Lagu yang kamu sukai' : ctx === 'recent' ? 'Riwayat' : 'Tangga lagu';
@@ -535,7 +535,7 @@ function addToPlaylist(pid, t) {
 
 let mctx = null;
 const act = (a, ico, label, on, extra = '') => `<button class="act${on ? ' on' : ''}${a === 'like' ? ' fill' : ''}" data-act="${a}" ${extra}>${ico}<span>${esc(label)}</span></button>`;
-const newPlForm = '<form id="plForm"><input id="plName" type="text" maxlength="40" placeholder="Nama playlist baru" aria-label="Nama playlist"><button class="pill" type="submit">Buat</button></form>';
+const newPlForm = '<form id="plForm"><input id="plName" type="text" maxlength="40" placeholder="Nama playlist baru" aria-label="Nama playlist" autocomplete="off" enterkeyhint="done"><button class="pill" type="submit" id="plGo" disabled>Buat</button></form>';
 
 function openMenu(track, ctx, mode) {
   mctx = { track, ctx, mode: mode || (track ? 'main' : 'newpl') };
@@ -602,7 +602,13 @@ function renderMenu() {
     h += `<p class="share-note">${P.tracks.length} lagu: ${esc(P.tracks.slice(0, 3).map((t) => t.title).join(', '))}${P.tracks.length > 3 ? ', …' : ''}</p>`;
     h += act('toimport', ICON.back, 'Kembali') + act('close', ICON.back, 'Batal');
   } else {
-    h += '<div class="sub">Buat playlist</div>' + newPlForm + (canScan() ? act('scan', ICON.scan, 'Pindai QR playlist') : '') + act('toimport', ICON.download, 'Impor dengan kode') + act('close', ICON.back, 'Tutup');
+    const tile = (a, ico, t, d) => `<button class="np-tile" data-act="${a}">${ico}<b>${t}</b><small>${d}</small></button>`;
+    h += `<div class="np-head"><span class="np-ico">${ICON.plus}</span><div><b>Playlist baru</b><small>Beri nama, lalu tambahkan lagu lewat menu titik tiga.</small></div></div>`;
+    h += newPlForm;
+    h += '<div class="np-chips" role="group" aria-label="Saran nama">' + ['Favorit', 'Santai', 'Semangat', 'Perjalanan', 'Fokus'].map((n) => `<button type="button" class="np-chip" data-act="plname" data-v="${n}">${n}</button>`).join('') + '</div>';
+    h += '<div class="np-or"><span>atau impor dari perangkat lain</span></div>';
+    h += '<div class="np-tiles">' + (canScan() ? tile('scan', ICON.scan, 'Pindai QR', 'Arahkan kamera') : '') + tile('toimport', ICON.download, 'Ketik kode', '6 karakter') + '</div>';
+    h += act('close', ICON.back, 'Tutup');
   }
   $('#menuBody').innerHTML = h;
 }
@@ -776,6 +782,7 @@ $('#menu').addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]');
   if (!b || !mctx) return;
   const { track, ctx } = mctx, a = b.dataset.act;
+  if (a === 'plname') { const i = $('#plName'); i.value = b.dataset.v; i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); return; }
   if (a === 'close') { closeMenu(); render(); }
   else if (a === 'addart') { followArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
   else if (a === 'delart') { unfollowArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
@@ -821,8 +828,12 @@ $('#menu').addEventListener('submit', (e) => {
   if (mctx && mctx.track) p.tracks.push(slim(mctx.track));
   store.set('playlists', state.playlists);
   toast(mctx && mctx.track ? `Playlist "${name}" dibuat dan lagu ditambahkan` : `Playlist "${name}" dibuat`);
-  closeMenu(); render();
+  const fromHome = !(mctx && mctx.track);
+  closeMenu();
+  if (fromHome) openView('pl:' + p.id); else render();
 });
+
+document.addEventListener('input', (e) => { if (e.target.id === 'plName') { const g = $('#plGo'); if (g) g.disabled = !e.target.value.trim(); } });
 
 /* =====================================================================
    PEMUTARAN
