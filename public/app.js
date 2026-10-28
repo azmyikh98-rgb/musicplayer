@@ -40,7 +40,10 @@ const ICON = {
   list: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h9"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg>',
-  trash: '<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',};
+  trash: '<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',
+  shuffle: '<svg viewBox="0 0 24 24"><path d="M3 7h3c5 0 6 10 11 10h4M3 17h3c1.5 0 2.6-.9 3.6-2.2M14.4 9.2C15.4 7.9 16.5 7 18 7h3M18 4l3 3-3 3M18 14l3 3-3 3"/></svg>',
+  edit: '<svg viewBox="0 0 24 24"><path d="M5 19l1-4L16 5l3 3L9 18zM14 7l3 3"/></svg>',
+};
 
 /* ---------- state ---------- */
 function detectTV() {
@@ -275,11 +278,29 @@ function viewHTML() {
   if (isChart && !tracks.length) body = state.charts.err[ctx.slice(5)] ? `<div class="empty">${esc(state.charts.err[ctx.slice(5)])}</div>` : '<div class="skeleton"></div>'.repeat(6);
   else if (!tracks.length) body = `<div class="empty"><b>Belum ada lagu</b>${isPl ? 'Tambahkan lewat menu titik tiga pada lagu.' : 'Daftar ini masih kosong.'}</div>`;
   else body = tracks.map((t, i) => rowHTML(t, i, ctx, isChart)).join('');
-  return `<div class="view-head">
-    <button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><h2>${title}</h2><span class="grow"></span>
-    ${tracks.length && (isPl || ctx === 'liked') ? `<button class="pill ghost" data-nav data-share="${esc(ctx)}">Bagikan</button>` : ''}
-    ${tracks.length ? `<button class="pill" data-nav data-playall="${esc(ctx)}">Putar semua</button>` : ''}
-    ${isPl ? `<button class="pill ghost" data-nav data-delpl>${state.confirmDel ? 'Yakin hapus?' : 'Hapus'}</button>` : ''}
+  const n = tracks.length;
+  const kind = isPl ? 'Playlist' : ctx === 'liked' ? 'Lagu yang kamu sukai' : ctx === 'recent' ? 'Riwayat' : 'Tangga lagu';
+  const uniq = []; for (const t of tracks) { if (!uniq.includes(t.id) && uniq.length < 4) uniq.push(t.id); }
+  const byId = (id) => tracks.find((t) => t.id === id);
+  let cover;
+  if (uniq.length >= 4) cover = `<div class="vcover grid">${uniq.map((id) => `<img src="${imgOf(byId(id))}" alt="">`).join('')}</div>`;
+  else if (uniq.length) cover = `<div class="vcover"><img src="${imgOf(byId(uniq[0]))}" alt=""></div>`;
+  else cover = `<div class="vcover g">${ctx === 'liked' ? ICON.heart : ctx === 'recent' ? ICON.clock : ICON.list}</div>`;
+  const canShare = n && (isPl || ctx === 'liked');
+  return `<div class="vtop"><button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button></div>
+  <div class="vhero">
+    ${cover}
+    <div class="vinfo">
+      <small class="vkind">${kind}</small>
+      <h2>${title}</h2>
+      <p class="vsub">${n ? `${n} lagu` : 'Belum ada lagu'}${isPl ? `<button class="vedit" data-nav data-rename aria-label="Ubah nama playlist">${ICON.edit}<span>Ubah nama</span></button>` : ''}</p>
+      ${n ? `<div class="vact">
+        <button class="pill big" data-nav data-playall="${esc(ctx)}">${ICON.play}<span>Putar</span></button>
+        <button class="pill ghost big" data-nav data-shuffleall="${esc(ctx)}">${ICON.shuffle}<span>Acak</span></button>
+        ${canShare ? `<button class="round" data-nav data-share="${esc(ctx)}" aria-label="Bagikan">${ICON.share}</button>` : ''}
+        ${isPl ? `<button class="round${state.confirmDel ? ' danger' : ''}" data-nav data-delpl aria-label="Hapus playlist">${ICON.trash}${state.confirmDel ? '<span>Yakin?</span>' : ''}</button>` : ''}
+      </div>` : (isPl ? `<div class="vact"><button class="round${state.confirmDel ? ' danger' : ''}" data-nav data-delpl aria-label="Hapus playlist">${ICON.trash}${state.confirmDel ? '<span>Yakin?</span>' : ''}</button></div>` : '')}
+    </div>
   </div><div class="tracks">${body}</div>`;
 }
 
@@ -290,7 +311,7 @@ function render() {
   // jaga posisi geser carousel dan fokus (penting untuk remote TV)
   const scrolls = [...el.querySelectorAll('.hscroll')].map((h) => h.scrollLeft);
   const f = el.contains(document.activeElement) ? document.activeElement.closest('[data-nav]') : null;
-  const fKey = f ? { play: f.dataset.play, i: f.dataset.i, sel: ['data-open', 'data-share', 'data-import', 'data-charttab', 'data-focussearch', 'data-pl', 'data-artist', 'data-manageart', 'data-followart', 'data-newpl', 'data-resume', 'data-back', 'data-playall', 'data-delpl'].find((a) => f.hasAttribute(a)) } : null;
+  const fKey = f ? { play: f.dataset.play, i: f.dataset.i, sel: ['data-open', 'data-share', 'data-import', 'data-charttab', 'data-focussearch', 'data-pl', 'data-artist', 'data-manageart', 'data-followart', 'data-newpl', 'data-resume', 'data-back', 'data-playall', 'data-shuffleall', 'data-rename', 'data-delpl'].find((a) => f.hasAttribute(a)) } : null;
   const fVal = fKey && fKey.sel ? f.getAttribute(fKey.sel) : null;
 
   el.innerHTML = state.view ? viewHTML() : state.tab === 'home' ? homeHTML() : state.tab === 'library' ? libraryHTML() : searchHTML();
@@ -1075,6 +1096,13 @@ $('#list').addEventListener('click', (e) => {
   if ((el = t.closest('[data-more]'))) { const [c, i] = splitRef(el.dataset.more); const tr = ctxTracks(c)[i]; if (tr) openMenu(tr, c); return; }
   if ((el = t.closest('[data-play]'))) { playList(ctxTracks(el.dataset.play), +el.dataset.i); return; }
   if ((el = t.closest('[data-playall]'))) { const l = ctxTracks(el.dataset.playall); if (l.length) playList(l, 0); return; }
+  if ((el = t.closest('[data-shuffleall]'))) { const l = ctxTracks(el.dataset.shuffleall); if (l.length) { state.shuffle = true; store.set('shuffle', true); playList(l, Math.floor(Math.random() * l.length)); renderControls(); toast('Acak aktif'); } return; }
+  if (t.closest('[data-rename]')) {
+    const p = state.playlists.find((x) => x.id === state.view.ctx.slice(3));
+    const nm = p && prompt('Nama playlist', p.name);
+    if (nm && nm.trim()) { p.name = nm.trim().slice(0, 40); store.set('playlists', state.playlists); render(); }
+    return;
+  }
   if ((el = t.closest('[data-charttab]'))) { state.chartTab = el.dataset.charttab; store.set('chartTab', state.chartTab); render(); return; }
   if (t.closest('[data-focussearch]')) { $('#q').focus(); return; }
   if ((el = t.closest('[data-open]'))) { openView(el.dataset.open); return; }
