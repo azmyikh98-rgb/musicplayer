@@ -16,7 +16,8 @@ Pemutar musik berbasis YouTube yang bisa di-install ke layar utama HP, tablet, d
 ## Berbagi playlist antar perangkat (QR + kode)
 
 - **Bagikan**: buka playlist (atau Liked Songs), tap **Bagikan**. Muncul kode QR, kode pendek 8 karakter (mis. `K7M4-2Q9X`), dan tombol salin kode / tautan.
-- **Impor**: Beranda → kartu **Impor playlist**, atau Pustaka → **Impor playlist**. Ketik kode, atau tempel tautan. Di HP cukup pindai QR dengan kamera bawaan, Nada terbuka dan langsung menawarkan menyimpan playlist.
+- **Impor**: Beranda → kartu **Impor playlist**, atau Pustaka → **Impor playlist**. Ketik kode, atau tempel tautan.
+- **Pindai QR dari dalam Nada**: di menu Impor (juga di menu Buat playlist) tap **Pindai QR dengan kamera**. Kamera belakang terbuka, arahkan ke QR, playlist langsung ditemukan. Perlu izin kamera. Tombol ini tidak muncul di mode TV. Pembacaan QR memakai `BarcodeDetector` bawaan browser bila ada, dan pustaka jsQR (`public/jsqr.js`, Apache 2.0, lisensi di `public/jsqr.LICENSE.txt`) di iPhone dan browser lain. Memindai dengan kamera bawaan HP juga tetap bisa: Nada terbuka dan menawarkan menyimpan playlist.
 - Hasil impor adalah salinan di perangkat itu. Perubahan setelahnya tidak ikut tersinkron.
 - **Kode pendek butuh Redis gratis** (agar bisa diketik di TV): Vercel → proyek → **Storage → Create Database → Upstash for Redis** (paket gratis) → hubungkan ke proyek `musicplayer` (Environment: Production) → **Redeploy**. Variabel `KV_REST_API_URL` dan `KV_REST_API_TOKEN` terisi otomatis. Kode berlaku 30 hari, isinya hanya ID dan judul lagu.
 - **Tanpa Redis** fitur tetap jalan, tetapi memakai tautan dan kode panjang (QR hanya untuk playlist sampai sekitar 50 lagu). Impor tautan panjang memakai 1 unit kuota YouTube per 50 lagu (`api/videos.js`).
@@ -124,6 +125,7 @@ api/videos.js           judul lagu dari daftar ID (impor tautan panjang)
 public/index.html       halaman utama
 public/app.js           logika aplikasi
 public/qr.js            pembuat kode QR (MIT, Kazuhiko Arase)
+public/jsqr.js          pembaca kode QR dari kamera (Apache 2.0, Cosmo Wolfe)
 public/style.css        tampilan responsif
 public/sw.js            service worker
 public/manifest.webmanifest, public/icons/   PWA

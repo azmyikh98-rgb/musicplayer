@@ -451,3 +451,8 @@ html.tv .share-qr { width: 11rem; } html.tv .share-code { font-size: 1.5rem; }
   font: 500 .75rem/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; max-height: 4.5rem; overflow-y: auto; user-select: all; outline: none; }
 .share-long:focus-visible { outline: 2px solid var(--accent); }
 .share-long { background: rgba(255,255,255,.07); }
+
+/* ---------- Pindai QR ---------- */
+.scan-box { position: relative; width: min(18rem, 80%); aspect-ratio: 1; margin: .5rem auto; border-radius: 1rem; overflow: hidden; background: #000; }
+.scan-box video { width: 100%; height: 100%; object-fit: cover; display: block; }
+.scan-box::after { content: ''; position: absolute; inset: 16%; border-radius: .75rem; border: 3px solid rgba(255,255,255,.9); box-shadow: 0 0 0 999px rgba(0,0,0,.4); pointer-events: none; }

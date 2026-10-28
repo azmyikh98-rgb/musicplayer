@@ -24,6 +24,7 @@ const avatar = (a) => a.thumb
   : `<div class="av" style="background:linear-gradient(135deg,hsl(${artHue(a.name)},65%,55%),hsl(${(artHue(a.name) + 40) % 360},65%,35%))">${esc(a.name.charAt(0).toUpperCase())}</div>`;
 
 const ICON = {
+  scan: '<svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></svg>',
   share: '<svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg>',
   download: '<svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>',
   play: '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
@@ -522,10 +523,11 @@ function openMenu(track, ctx, mode) {
   $('#menu').hidden = false;
   (mctx.mode === 'newpl' ? $('#plName') : mctx.mode === 'artists' ? $('#artName') : mctx.mode === 'import' ? $('#impCode') : $('#menuBody button'))?.focus();
 }
-function closeMenu() { $('#menu').hidden = true; mctx = null; }
+function closeMenu() { stopScan(); $('#menu').hidden = true; mctx = null; }
 
 function renderMenu() {
   const { track, ctx, mode } = mctx;
+  if (mode !== 'scan') stopScan();
   $('#menuHead').hidden = !track;
   if (track) { $('#menuArt').src = track.thumb || thumb(track.id); $('#menuTitle').textContent = track.title; $('#menuSub').textContent = track.artist; }
   let h = '';
@@ -560,6 +562,7 @@ function renderMenu() {
     h += act('close', ICON.back, 'Selesai');
   } else if (mode === 'import') {
     h += '<div class="sub">Impor playlist</div>';
+    if (canScan() && !mctx.busy) h += act('scan', ICON.scan, 'Pindai QR dengan kamera');
     if (mctx.busy) h += '<p class="share-note">Memuat playlist…</p>';
     else {
       h += '<form id="impForm"><input id="impCode" type="text" maxlength="2000" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Kode 8 karakter atau tautan" aria-label="Kode playlist"><button class="pill" type="submit">Cari</button></form>';
@@ -567,6 +570,11 @@ function renderMenu() {
       if (mctx.err) h += `<p class="share-note err">${esc(mctx.err)}</p>`;
     }
     h += act('close', ICON.back, 'Tutup');
+  } else if (mode === 'scan') {
+    h += '<div class="sub">Pindai kode QR</div>';
+    h += '<div class="scan-box"><video id="scanVideo" playsinline muted></video></div>';
+    h += `<p class="share-note${mctx.scanErr ? ' err' : ''}" id="scanNote">${esc(mctx.scanErr || 'Arahkan kamera ke kode QR playlist Nada.')}</p>`;
+    h += act('toimport', ICON.list, 'Ketik kode manual') + act('close', ICON.back, 'Batal');
   } else if (mode === 'preview') {
     const P = mctx.preview;
     h += '<div class="sub">Playlist ditemukan</div>';
@@ -574,7 +582,7 @@ function renderMenu() {
     h += `<p class="share-note">${P.tracks.length} lagu: ${esc(P.tracks.slice(0, 3).map((t) => t.title).join(', '))}${P.tracks.length > 3 ? ', …' : ''}</p>`;
     h += act('toimport', ICON.back, 'Kembali') + act('close', ICON.back, 'Batal');
   } else {
-    h += '<div class="sub">Buat playlist</div>' + newPlForm + act('toimport', ICON.download, 'Impor dengan kode / QR') + act('close', ICON.back, 'Tutup');
+    h += '<div class="sub">Buat playlist</div>' + newPlForm + (canScan() ? act('scan', ICON.scan, 'Pindai QR playlist') : '') + act('toimport', ICON.download, 'Impor dengan kode') + act('close', ICON.back, 'Tutup');
   }
   $('#menuBody').innerHTML = h;
 }
@@ -661,6 +669,77 @@ async function openShare(ctx) {
   renderMenu(); $('#menuBody button')?.focus();
 }
 
+
+/* ---------- Pindai QR dengan kamera ---------- */
+let scanStream = null, scanRaf = 0, scanBusy = false, scanLast = '', scanLastAt = 0;
+const canScan = () => !state.tv && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+
+function stopScan() {
+  cancelAnimationFrame(scanRaf); scanRaf = 0;
+  if (scanStream) { scanStream.getTracks().forEach((t) => t.stop()); scanStream = null; }
+  const v = $('#scanVideo'); if (v) { try { v.pause(); } catch {} v.srcObject = null; }
+}
+
+function loadJsQR() {
+  if (window.jsQR) return Promise.resolve(window.jsQR);
+  return new Promise((res, rej) => {
+    const el = document.createElement('script'); el.src = '/jsqr.js';
+    el.onload = () => (window.jsQR ? res(window.jsQR) : rej(new Error('jsQR')));
+    el.onerror = () => rej(new Error('jsQR'));
+    document.head.appendChild(el);
+  });
+}
+
+async function startScan() {
+  const my = mctx; if (!my) return;
+  my.mode = 'scan'; my.scanErr = ''; renderMenu();
+  $('#menuBody button')?.focus();
+  const fail = (msg) => { if (mctx !== my) return; my.scanErr = msg; const n = $('#scanNote'); if (n) { n.textContent = msg; n.classList.add('err'); } };
+  try {
+    scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false });
+  } catch (e) {
+    fail(e && e.name === 'NotAllowedError' ? 'Izin kamera ditolak. Aktifkan izin kamera untuk Nada di pengaturan, atau ketik kodenya.' : 'Kamera tidak tersedia. Ketik kodenya secara manual.');
+    return;
+  }
+  if (mctx !== my || my.mode !== 'scan') { stopScan(); return; }
+  const video = $('#scanVideo'); video.srcObject = scanStream;
+  try { await video.play(); } catch {}
+  let detector = null;
+  if ('BarcodeDetector' in window) { try { detector = new BarcodeDetector({ formats: ['qr_code'] }); } catch {} }
+  let jsqr = null;
+  if (!detector) { try { jsqr = await loadJsQR(); } catch { fail('Pemindai gagal dimuat. Ketik kodenya secara manual.'); stopScan(); return; } }
+  const canvas = document.createElement('canvas'), cx = canvas.getContext('2d', { willReadFrequently: true });
+  let lastTick = 0;
+  const tick = async (ts) => {
+    if (!scanStream || mctx !== my || my.mode !== 'scan') return;
+    scanRaf = requestAnimationFrame(tick);
+    if (ts - lastTick < 140 || scanBusy || video.readyState < 2 || !video.videoWidth) return;
+    lastTick = ts; scanBusy = true;
+    try {
+      let text = '';
+      if (detector) {
+        const r = await detector.detect(video); text = r && r[0] ? r[0].rawValue : '';
+      } else {
+        const w = Math.min(video.videoWidth, 720), h = Math.round(video.videoHeight * (w / video.videoWidth));
+        canvas.width = w; canvas.height = h; cx.drawImage(video, 0, 0, w, h);
+        const img = cx.getImageData(0, 0, w, h), r = jsqr(img.data, w, h, { inversionAttempts: 'dontInvert' });
+        text = r ? r.data : '';
+      }
+      if (text && mctx === my && my.mode === 'scan') {
+        if (parseShareInput(text)) {
+          stopScan(); if (navigator.vibrate) { try { navigator.vibrate(60); } catch {} }
+          my.mode = 'import'; importFrom(text);
+        } else if (text !== scanLast || Date.now() - scanLastAt > 3000) {
+          scanLast = text; scanLastAt = Date.now();
+          const n = $('#scanNote'); if (n) { n.textContent = 'QR ini bukan kode playlist Nada. Coba kode yang lain.'; n.classList.add('err'); }
+        }
+      }
+    } catch {} finally { scanBusy = false; }
+  };
+  scanRaf = requestAnimationFrame(tick);
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden && mctx && mctx.mode === 'scan') { stopScan(); mctx.scanErr = 'Pemindaian dihentikan saat aplikasi ditinggalkan.'; renderMenu(); } });
+
 async function copyText(text, okMsg) {
   try { await navigator.clipboard.writeText(text); }
   catch {
@@ -683,6 +762,7 @@ $('#menu').addEventListener('click', (e) => {
   else if (a === 'copycode') { const S = mctx.share; copyText(S.code || S.payload, S.code ? 'Kode disalin' : 'Kode panjang disalin'); }
   else if (a === 'copylink') { copyText(mctx.share.link, 'Tautan disalin'); }
   else if (a === 'nativeshare') { const S = mctx.share; navigator.share({ title: `Playlist ${S.name} di Nada`, text: `Playlist "${S.name}" (${S.count} lagu) di Nada`, url: S.link }).catch(() => {}); }
+  else if (a === 'scan') { startScan(); }
   else if (a === 'toimport') { mctx.mode = 'import'; mctx.err = ''; renderMenu(); $('#impCode')?.focus(); }
   else if (a === 'like') { toggleFav(track); closeMenu(); }
   else if (a === 'toplaylist') { mctx.mode = 'pl'; renderMenu(); $('#menuBody button')?.focus(); }
