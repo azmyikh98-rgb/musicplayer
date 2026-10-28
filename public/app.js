@@ -223,7 +223,6 @@ function homeHTML() {
       <b>${esc(p.name)}</b><small>Playlist</small></div>`;
   });
   plCards.unshift(`<div class="card new" data-nav tabindex="0" role="button" data-newpl aria-label="Buat playlist baru"><div class="cover">${ICON.plus}</div><b>Playlist baru</b><small>Buat sendiri</small></div>`);
-  plCards.splice(1, 0, `<div class="card new" data-nav tabindex="0" role="button" data-import aria-label="Impor playlist dengan kode"><div class="cover">${ICON.download}</div><b>Impor playlist</b><small>Pakai kode / QR</small></div>`);
   out += section('My Playlist', hscroll(plCards));
 
   // 6. liked songs, hanya jika ada (tile di atas sudah jadi pintu masuk saat kosong)
@@ -554,8 +553,8 @@ function renderMenu() {
     if (S.status === 'loading') h += '<p class="share-note">Membuat kode…</p>';
     else {
       if (S.qr) h += `<div class="share-qr">${S.qr}</div>`;
-      if (S.code) h += `<div class="share-code" aria-label="Kode ${esc(S.code)}">${esc(S.code.slice(0, 4))}<i>-</i>${esc(S.code.slice(4))}</div><p class="share-note">Pindai QR dengan kamera HP, atau ketik kode ini lewat menu Impor di Nada. Berlaku 30 hari.</p>`;
-      else h += `<div class="share-long" tabindex="0" aria-label="Kode panjang">${esc(S.payload)}</div><p class="share-note">${S.long ? 'Playlist ini terlalu panjang untuk QR. ' : 'Pindai QR dengan kamera HP, atau salin kode di atas dan tempel lewat menu Impor. '}${S.nostore ? 'Kode pendek 8 karakter (untuk diketik di TV) aktif setelah Upstash Redis disambungkan di Vercel.' : ''}</p>`;
+      if (S.code) h += `<div class="share-code" aria-label="Kode ${esc(S.code)}">${esc(S.code)}</div><p class="share-note">Pindai QR dengan kamera HP, atau ketik kode ini lewat menu Impor di Nada. Berlaku 30 hari.</p>`;
+      else h += `<div class="share-long" tabindex="0" aria-label="Kode panjang">${esc(S.payload)}</div><p class="share-note">${S.long ? 'Playlist ini terlalu panjang untuk QR. ' : 'Pindai QR dengan kamera HP, atau salin kode di atas dan tempel lewat menu Impor. '}${S.nostore ? 'Kode pendek 6 karakter (untuk diketik di TV) aktif setelah Upstash Redis disambungkan di Vercel.' : ''}</p>`;
       h += act('copycode', ICON.list, S.code ? 'Salin kode' : 'Salin kode panjang') + act('copylink', ICON.share, 'Salin tautan');
       if (navigator.share) h += act('nativeshare', ICON.share, 'Bagikan lewat…');
     }
@@ -565,7 +564,7 @@ function renderMenu() {
     if (canScan() && !mctx.busy) h += act('scan', ICON.scan, 'Pindai QR dengan kamera');
     if (mctx.busy) h += '<p class="share-note">Memuat playlist…</p>';
     else {
-      h += '<form id="impForm"><input id="impCode" type="text" maxlength="2000" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Kode 8 karakter atau tautan" aria-label="Kode playlist"><button class="pill" type="submit">Cari</button></form>';
+      h += '<form id="impForm"><input id="impCode" type="text" maxlength="2000" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="Kode 6 karakter atau tautan" aria-label="Kode playlist"><button class="pill" type="submit">Cari</button></form>';
       h += '<p class="share-note">Ketik kode dari perangkat lain, atau tempel tautan yang dibagikan. Di HP, pindai QR dengan kamera bawaan.</p>';
       if (mctx.err) h += `<p class="share-note err">${esc(mctx.err)}</p>`;
     }
@@ -598,12 +597,12 @@ const QR_MAX = 700;   // batas panjang teks agar QR tetap mudah dipindai
 
 function parseShareInput(text) {
   text = String(text || '').trim();
-  let m = text.match(/[#?&](?:c|code)=([A-Za-z0-9-]{8,9})(?![A-Za-z0-9-])/);
+  let m = text.match(/[#?&](?:c|code)=([A-Za-z0-9-]{6,7})(?![A-Za-z0-9-])/);
   if (m) return { code: m[1].replace(/-/g, '').toUpperCase() };
   m = text.match(/[#?&]share=([\w-]+)/); if (m) return { payload: m[1] };
   m = text.match(/^NADA1\.([\w-]+)$/); if (m) return { payload: m[1] };
   const c = text.toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (/^[A-Z2-9]{8}$/.test(c)) return { code: c };
+  if (/^[A-Z2-9]{6}$/.test(c)) return { code: c };
   return null;
 }
 

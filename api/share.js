@@ -1,6 +1,6 @@
 // POST /api/share  body {name, tracks:[{id,title,artist}]}  -> {code}
-// GET  /api/share?code=K7M42Q9X                             -> {name, tracks}
-// Kode pendek 8 karakter untuk berbagi playlist antar perangkat (juga bisa diketik di TV).
+// GET  /api/share?code=K7M42Q                             -> {name, tracks}
+// Kode pendek 6 karakter untuk berbagi playlist antar perangkat (juga bisa diketik di TV).
 // Daftar lagu dititipkan di Redis (Upstash) selama 30 hari, tanpa akun dan tanpa data pribadi.
 // Jika Redis belum tersambung, fungsi ini menjawab 501 dan aplikasi memakai tautan panjang sebagai cadangan.
 
@@ -22,7 +22,7 @@ async function redis(args) {
   return d.result;
 }
 
-const newCode = () => Array.from({ length: 8 }, () => ALPHA[crypto.randomInt(ALPHA.length)]).join('');
+const newCode = () => Array.from({ length: 6 }, () => ALPHA[crypto.randomInt(ALPHA.length)]).join('');
 const clip = (s, n) => String(s == null ? '' : s).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n);
 
 function clean(body) {
@@ -48,7 +48,7 @@ module.exports = async (req, res) => {
       const data = clean(typeof req.body === 'string' ? JSON.parse(req.body || '{}') : req.body);
       if (!data.tracks.length) return res.status(400).json({ error: 'Playlist kosong.' });
       const value = JSON.stringify(data);
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 8; i++) {
         const code = newCode();
         const ok = await redis(['SET', 'pl:' + code, value, 'EX', TTL, 'NX']);
         if (ok === 'OK') return res.status(200).json({ code, days: 30 });
@@ -56,7 +56,7 @@ module.exports = async (req, res) => {
       return res.status(503).json({ error: 'Gagal membuat kode, coba lagi.' });
     }
     const code = String(req.query.code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-    if (!/^[A-Z2-9]{8}$/.test(code)) return res.status(400).json({ error: 'Format kode tidak valid.' });
+    if (!/^[A-Z2-9]{6}$/.test(code)) return res.status(400).json({ error: 'Format kode tidak valid.' });
     const raw = await redis(['GET', 'pl:' + code]);
     if (!raw) return res.status(404).json({ error: 'Kode tidak ditemukan atau sudah kedaluwarsa.' });
     return res.status(200).json(JSON.parse(raw));
