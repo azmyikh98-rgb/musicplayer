@@ -8,6 +8,17 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Nada">
+<link rel="apple-touch-startup-image" href="/splash/1290x2796.png" media="(device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/1320x2868.png" media="(device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/1206x2622.png" media="(device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/1179x2556.png" media="(device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/1284x2778.png" media="(device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/1170x2532.png" media="(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/1125x2436.png" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/1242x2688.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/828x1792.png" media="(device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/750x1334.png" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)">
+<link rel="apple-touch-startup-image" href="/splash/1242x2208.png" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)">
 <title>Nada</title>
 <script>
 /* Pilih layout sebelum render supaya tidak berkedip: phone | tablet | desktop (+ class tv) */
@@ -25,9 +36,40 @@
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="icon" href="/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
+<style id="splash-css">
+html.nosplash #splash{display:none}
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;background:#0e0e13;overflow:hidden;transition:opacity .5s ease,transform .5s ease;color:#f3f3f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
+#splash .glow{position:absolute;width:140vmax;height:140vmax;left:50%;top:42%;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(255,79,109,.22),rgba(255,154,86,.08) 45%,transparent 70%);animation:sp-breathe 3.2s ease-in-out infinite}
+#splash .mark{position:relative;width:7rem;height:7rem;display:grid;place-items:center;animation:sp-pop .7s cubic-bezier(.2,1.3,.4,1) both}
+#splash .mark svg{position:relative;width:100%;height:100%;filter:drop-shadow(0 .75rem 2rem rgba(255,79,109,.45))}
+#splash .ring{position:absolute;inset:0;border-radius:50%;border:.125rem solid rgba(255,107,100,.55);opacity:0;animation:sp-ring 2.4s ease-out infinite}
+#splash .ring:nth-child(2){animation-delay:.8s}
+#splash .ring:nth-child(3){animation-delay:1.6s}
+#splash h1{margin:0;font-size:2.25rem;font-weight:800;letter-spacing:-.02em;background:linear-gradient(135deg,#ff4f6d,#ff9a56);-webkit-background-clip:text;background-clip:text;color:transparent;animation:sp-up .6s .25s ease both}
+#splash p{margin:-1rem 0 0;font-size:.9375rem;color:#9a9aad;animation:sp-up .6s .45s ease both}
+#splash .eq{display:flex;align-items:flex-end;gap:.25rem;height:1.25rem;margin-top:.75rem;animation:sp-up .6s .6s ease both}
+#splash .eq i{display:block;width:.25rem;height:100%;border-radius:.125rem;background:linear-gradient(#ff4f6d,#ff9a56);transform-origin:bottom;animation:sp-eq 1s ease-in-out infinite}
+#splash .eq i:nth-child(2){animation-delay:.15s}#splash .eq i:nth-child(3){animation-delay:.3s}#splash .eq i:nth-child(4){animation-delay:.45s}#splash .eq i:nth-child(5){animation-delay:.6s}
+@keyframes sp-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes sp-up{from{opacity:0;transform:translateY(.75rem)}to{opacity:1;transform:none}}
+@keyframes sp-ring{0%{opacity:.7;transform:scale(.95)}100%{opacity:0;transform:scale(2.3)}}
+@keyframes sp-eq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
+@keyframes sp-breathe{0%,100%{opacity:.75}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01s!important;animation-iteration-count:1!important}}
+</style>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
+<div id="splash" role="status" aria-label="Memuat Nada">
+  <div class="glow"></div>
+  <div class="mark"><i class="ring"></i><i class="ring"></i><i class="ring"></i>
+    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="spg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4f6d"/><stop offset="1" stop-color="#ff9a56"/></linearGradient></defs><circle cx="256" cy="256" r="220" fill="url(#spg)"/><path d="M215 180v152a44 44 0 1 1-24-39V204l112-28v112a44 44 0 1 1-24-39V150z" fill="#0e0e13" transform="translate(24 14) scale(.92)"/></svg>
+  </div>
+  <h1>Nada</h1>
+  <p>Musik apa aja, kapan aja.</p>
+  <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+</div>
 <div id="app">
   <header class="top">
     <h1>Nada</h1>
@@ -103,6 +145,19 @@
   <div id="tvHint" hidden><span><b>◀ ▲ ▼ ▶</b> Navigasi</span><span><b>OK</b> Putar</span><span><b>F / Kuning</b> Suka</span><span><b>M / Biru</b> Menu</span><span><b>Play/Pause</b> Jeda</span><span><b>Kembali</b> Menu utama</span></div>
   <div id="toast" role="status"></div>
 </div>
+<script>
+/* splash: tampil sebentar setiap aplikasi dibuka, lalu pudar. */
+(function () {
+  var s = document.getElementById('splash'); if (!s) return;
+  var t0 = Date.now(), done = false;
+  function hide() {
+    if (done) return; done = true;
+    setTimeout(function () { s.classList.add('out'); setTimeout(function () { s.remove(); }, 550); }, Math.max(0, 1500 - (Date.now() - t0)));
+  }
+  if (document.readyState === 'complete') hide(); else addEventListener('load', hide);
+  setTimeout(hide, 4500);
+})();
+</script>
 <script src="/qr.js"></script>
 <script src="/app.js"></script>
 <script src="https://www.youtube.com/iframe_api" async></script>
