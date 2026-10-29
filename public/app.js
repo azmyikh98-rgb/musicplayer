@@ -116,7 +116,7 @@ function rowHTML(t, i, ctx, rank) {
   const playing = current()?.id === t.id;
   return `<div class="row${playing ? ' playing' : ''}" data-nav tabindex="0" role="button" data-id="${esc(t.id)}" data-play="${esc(ctx)}" data-i="${i}" aria-label="Putar ${esc(t.title)}">
     ${rank ? `<span class="rk">${i + 1}</span>` : ''}
-    <img src="${imgOf(t)}" alt="" loading="lazy">
+    <span class="thumb"><img src="${imgOf(t)}" alt="" loading="lazy">${playing ? '<span class="eqb" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}</span>
     <div class="meta"><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></div>
     <div class="actions">
       <button class="heart icon-btn${isFav(t.id) ? ' on' : ''}" data-like="${esc(ctx)}:${i}" tabindex="-1" aria-label="Suka">${ICON.heart}</button>
@@ -128,7 +128,7 @@ function rowHTML(t, i, ctx, rank) {
 function cardHTML(t, i, ctx, rank) {
   const playing = current()?.id === t.id;
   return `<div class="card${playing ? ' playing' : ''}" data-nav tabindex="0" role="button" data-id="${esc(t.id)}" data-play="${esc(ctx)}" data-i="${i}" aria-label="Putar ${esc(t.title)}">
-    <div class="cover"><img src="${imgOf(t)}" alt="" loading="lazy">${rank ? `<span class="rank">${i + 1}</span>` : ''}</div>
+    <div class="cover"><img src="${imgOf(t)}" alt="" loading="lazy">${playing ? '<span class="eqb" aria-hidden="true"><i></i><i></i><i></i></span>' : ''}${rank ? `<span class="rank">${i + 1}</span>` : ''}</div>
     <button class="more icon-btn card-more" data-more="${esc(ctx)}:${i}" tabindex="-1" aria-label="Menu lagu">${ICON.more}</button>
     <b>${esc(t.title)}</b><small>${esc(t.artist)}</small>
   </div>`;
@@ -240,9 +240,14 @@ function searchHTML() {
   if (state.loading) return '<div class="tracks">' + '<div class="skeleton"></div>'.repeat(7) + '</div>';
   if (state.error) return `<div class="tracks"><div class="empty"><b>Ups</b>${esc(state.error)}</div></div>`;
   if (!state.results.length) {
-    return `<div class="tracks"><div class="empty"><b>Lagi pengen dengerin apa?</b>Ketik judul lagu atau nama artis. Filter "Resmi" bikin hasilnya bebas reupload, video lirik, dan cover.</div></div>`;
+    const chip = (q) => `<button class="qchip" data-nav data-q="${esc(q)}">${esc(q)}</button>`;
+    const hist = state.history.slice(0, 8);
+    const tries = STARTER_ARTISTS.filter((n) => !hist.some((h) => lc(h) === lc(n))).slice(0, 8);
+    return `<div class="searchhome"><div class="empty sm"><b>Lagi pengen dengerin apa?</b>Ketik judul lagu atau nama artis. Filter "Resmi" bikin hasilnya bebas reupload, video lirik, dan cover.</div>`
+      + (hist.length ? `<div class="sh-head"><h3>Pencarian terakhir</h3><button class="link" data-nav data-clearhist>Hapus</button></div><div class="qchips">${hist.map(chip).join('')}</div>` : '')
+      + `<div class="sh-head"><h3>Coba cari</h3></div><div class="qchips">${tries.map(chip).join('')}</div></div>`;
   }
-  return '<div class="tracks">' + state.results.map((t, i) => rowHTML(t, i, 'search')).join('') + '</div>';
+  return `<div class="res-h">${state.results.length} hasil${state.q && !/^https?:/i.test(state.q) ? ` untuk <b>${esc(state.q)}</b>` : ''}</div><div class="tracks">` + state.results.map((t, i) => rowHTML(t, i, 'search')).join('') + '</div>';
 }
 
 function libraryHTML() {
@@ -304,8 +309,11 @@ function viewHTML() {
   </div><div class="tracks">${body}</div>`;
 }
 
+let lastRoute = '';
 function render() {
   const el = $('#list');
+  const route = state.tab + '|' + (state.view ? state.view.ctx : '');
+  if (route !== lastRoute) { lastRoute = route; el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
   document.querySelectorAll('.tabs button[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === state.tab));
 
   // jaga posisi geser carousel dan fokus (penting untuk remote TV)
@@ -327,7 +335,14 @@ function render() {
 
 function markPlaying() {
   const id = current()?.id;
-  document.querySelectorAll('#list [data-id]').forEach((n) => n.classList.toggle('playing', n.dataset.id === id));
+  document.querySelectorAll('#list [data-id]').forEach((n) => {
+    const on = n.dataset.id === id;
+    n.classList.toggle('playing', on);
+    const host = n.querySelector('.thumb, .cover');
+    const has = host && host.querySelector('.eqb');
+    if (host && on && !has) host.insertAdjacentHTML('beforeend', '<span class="eqb" aria-hidden="true"><i></i><i></i><i></i></span>');
+    else if (host && !on && has) has.remove();
+  });
 }
 
 function renderUpnext() {
@@ -340,6 +355,12 @@ function renderUpnext() {
     `<div class="up" data-nav tabindex="0" role="button" data-upi="${i}" aria-label="Putar ${esc(q[i].title)}"><img src="${imgOf(q[i])}" alt="" loading="lazy"><span class="meta"><b>${esc(q[i].title)}</b><small>${esc(q[i].artist)}</small></span></div>`).join('');
 }
 
+function renderPeek() {
+  const b = $('#nextPeek'), q = state.queue, n = q[state.idx + 1];
+  if (!n || state.shuffle) { b.hidden = true; return; }
+  b.hidden = false; b.dataset.upi = state.idx + 1;
+  b.innerHTML = `<img src="${imgOf(n)}" alt=""><span><small>Berikutnya</small><b>${esc(n.title)}</b><i>${esc(n.artist)}</i></span>${ICON.next}`;
+}
 function renderPlayer() {
   const t = current();
   $('#mini').hidden = !t;
@@ -351,6 +372,8 @@ function renderPlayer() {
   $('#miniTitle').textContent = t.title;
   $('#miniArtist').textContent = t.artist;
   $('#miniArt').src = t.thumb || thumb(t.id);
+  $('#player').style.setProperty('--art', `url("${(t.thumb || thumb(t.id)).replace(/"/g, '')}")`);
+  renderPeek();
   $('#mini').style.setProperty('--art', `url("${(t.thumb || thumb(t.id)).replace(/"/g, '')}")`);
   $('#pbg i').style.backgroundImage = `url("${(t.thumb || thumb(t.id)).replace(/"/g, '')}")`;
   $('#favBtn').classList.toggle('on', isFav(t.id));
@@ -359,6 +382,7 @@ function renderPlayer() {
 
 function renderControls() {
   const ic = state.playing ? ICON.pause : ICON.play;
+  document.documentElement.classList.toggle('is-playing', !!state.playing);
   $('#play').innerHTML = ic; $('#miniPlay').innerHTML = ic;
   $('#prev').innerHTML = ICON.prev; $('#next').innerHTML = ICON.next; $('#miniNext').innerHTML = ICON.next;
   $('#shuffle').classList.toggle('on', state.shuffle);
@@ -444,7 +468,7 @@ async function search(q) {
   if (state.tv) $('#list .row')?.focus();
 }
 
-function runSearch(text) { $('#q').value = text; search(text); }
+function runSearch(text) { $('#q').value = text; $('#qClear').hidden = !text; search(text); }
 
 /* saran saat mengetik */
 const sgCache = new Map();
@@ -1086,6 +1110,9 @@ $('#searchForm').addEventListener('submit', (e) => {
   $('#q').blur(); search(q);
 });
 $('#q').addEventListener('input', onType);
+$('#q').addEventListener('input', () => { $('#qClear').hidden = !$('#q').value; });
+$('#qClear').addEventListener('click', () => { $('#q').value = ''; $('#qClear').hidden = true; $('#q').focus(); onType(); });
+$('#list').addEventListener('scroll', () => document.querySelector('.top').classList.toggle('scrolled', $('#list').scrollTop > 6), { passive: true });
 $('#q').addEventListener('focus', onType);
 $('#q').addEventListener('blur', () => setTimeout(() => { if (!$('#suggest').contains(document.activeElement)) hideSuggest(); }, 160));
 $('#suggest').addEventListener('pointerdown', (e) => e.preventDefault()); // jaga fokus input saat disentuh
@@ -1121,6 +1148,8 @@ $('#list').addEventListener('click', (e) => {
   if ((el = t.closest('[data-pl]'))) { openView('pl:' + el.dataset.pl); return; }
   if (t.closest('[data-manageart]')) { openMenu(null, null, 'artists'); return; }
   if ((el = t.closest('[data-followart]'))) { const n = el.dataset.followart; if (isFollowing(n)) { unfollowArtist(n); } else followArtist(n, el.closest('.artist')?.querySelector('img')?.src || ''); render(); return; }
+  if ((el = t.closest('[data-q]'))) { runSearch(el.dataset.q); return; }
+  if (t.closest('[data-clearhist]')) { state.history = []; store.set('history', []); render(); return; }
   if ((el = t.closest('[data-artist]'))) { runSearch(el.dataset.artist); return; }
   if ((el = t.closest('[data-share]'))) { openShare(el.dataset.share); return; }
   if (t.closest('[data-import]')) { openMenu(null, null, 'import'); return; }
@@ -1171,6 +1200,20 @@ $('#lyrics').addEventListener('click', (e) => {
   lyrUser = 0; yt.seekTo(parseFloat(p.dataset.t), true);
 });
 ['wheel', 'touchmove'].forEach((ev) => $('#stage').addEventListener(ev, () => { lyrUser = Date.now(); }, { passive: true }));
+$('#nextPeek').addEventListener('click', (e) => { state.idx = +e.currentTarget.dataset.upi; load(0); });
+/* tarik ke bawah untuk menutup pemutar */
+(function () {
+  const sh = $('#player'); let d = null;
+  const start = (e) => { if (!e.target.closest('.sheet-head, .info, .pview')) return; if (e.target.closest('button')) { d = null; return; } d = { x: e.clientX, y: e.clientY, dy: 0 }; };
+  sh.addEventListener('pointerdown', start);
+  window.addEventListener('pointermove', (e) => {
+    if (!d) return; const dy = e.clientY - d.y, dx = e.clientX - d.x;
+    if (Math.abs(dx) > Math.abs(dy) && !d.dy) { d = null; return; }
+    d.dy = Math.max(0, dy); sh.style.transition = 'none'; sh.style.transform = `translateY(${d.dy}px)`;
+  });
+  const end = () => { if (!d) return; const go = d.dy > 110; d = null; sh.style.transition = ''; sh.style.transform = ''; if (go) sh.classList.remove('open'); };
+  window.addEventListener('pointerup', end); window.addEventListener('pointercancel', end);
+})();
 $('#collapse').addEventListener('click', () => $('#player').classList.remove('open'));
 $('#play').addEventListener('click', toggle);
 $('#next').addEventListener('click', () => next());

@@ -72,11 +72,11 @@ html.nosplash #splash{display:none}
 </div>
 <div id="app">
   <header class="top">
-    <h1>Nada</h1>
+    <h1><span class="logo"><svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4f6d"/><stop offset="1" stop-color="#ff9a56"/></linearGradient></defs><circle cx="256" cy="256" r="236" fill="url(#lg)"/><path d="M215 180v152a44 44 0 1 1-24-39V204l112-28v112a44 44 0 1 1-24-39V150z" fill="#0e0e13" transform="translate(24 14) scale(.92)"/></svg></span><span class="wm">Nada</span></h1>
     <form id="searchForm" role="search" autocomplete="off">
       <div class="searchrow">
-        <input id="q" type="search" enterkeyhint="search" autocomplete="off" aria-label="Cari lagu"
-               placeholder="Cari lagu, artis, atau tempel link YouTube">
+        <div class="qwrap"><svg class="qi" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 5 5"/></svg><input id="q" type="search" enterkeyhint="search" autocomplete="off" aria-label="Cari lagu"
+               placeholder="Cari lagu, artis, atau link"><button type="button" id="qClear" class="qclear" hidden aria-label="Hapus pencarian" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
         <button type="button" id="officialBtn" class="chip" aria-pressed="true" title="Cuma tampilkan musik resmi (tanpa reupload)">
           <svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg>Resmi
         </button>
@@ -115,6 +115,7 @@ html.nosplash #splash{display:none}
     </div>
     <div class="stage" id="stage">
       <div class="video"><div id="yt"></div></div>
+      <button id="nextPeek" class="peek" type="button" hidden></button>
       <div id="lyrics" class="lyrics" aria-live="off" aria-label="Lirik lagu"></div>
     </div>
     <div class="info">
