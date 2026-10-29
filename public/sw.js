@@ -1,5 +1,5 @@
-const CACHE = 'nada-v20';
-const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/qr.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
+const CACHE = 'nada-v21';
+const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/qr.js', '/story.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

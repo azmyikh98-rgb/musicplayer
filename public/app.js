@@ -40,6 +40,7 @@ const ICON = {
   list: '<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h9"/></svg>',
   user: '<svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5"/></svg>',
   check: '<svg viewBox="0 0 24 24"><path d="m5 12 4.5 4.5L19 7"/></svg>',
+  story: '<svg viewBox="0 0 24 24"><rect x="6" y="3" width="12" height="18" rx="3"/><path d="M12 8.5l1 2.5 2.5 1-2.5 1-1 2.5-1-2.5-2.5-1 2.5-1z"/></svg>',
   trash: '<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"/></svg>',
   shuffle: '<svg viewBox="0 0 24 24"><path d="M3 7h3c5 0 6 10 11 10h4M3 17h3c1.5 0 2.6-.9 3.6-2.2M14.4 9.2C15.4 7.9 16.5 7 18 7h3M18 4l3 3-3 3M18 14l3 3-3 3"/></svg>',
   edit: '<svg viewBox="0 0 24 24"><path d="M5 19l1-4L16 5l3 3L9 18zM14 7l3 3"/></svg>',
@@ -581,6 +582,7 @@ function renderMenu() {
     h += act('toplaylist', ICON.list, 'Tambah ke playlist');
     h += act('follow', ICON.user, isFollowing(track.artist) ? `Unfollow ${track.artist}` : `Follow ${track.artist}`, isFollowing(track.artist));
     h += act('artistsearch', ICON.search, `Cari lagu dari ${track.artist}`);
+    if (!document.documentElement.classList.contains('tv')) h += act('story', ICON.story, 'Bagikan ke Story');
     if (ctx && ctx.startsWith('pl:')) h += act('rmpl', ICON.trash, 'Hapus dari playlist ini');
     h += act('close', ICON.back, 'Tutup');
   } else if (mode === 'pl') {
@@ -815,6 +817,11 @@ $('#menu').addEventListener('click', (e) => {
   else if (a === 'copylink') { copyText(mctx.share.link, 'Link udah disalin'); }
   else if (a === 'nativeshare') { const S = mctx.share; navigator.share({ title: `Playlist ${S.name} di Nada`, text: `Playlist "${S.name}" (${S.count} lagu) di Nada`, url: S.link }).catch(() => {}); }
   else if (a === 'scan') { startScan(); }
+  else if (a === 'story') {
+    const tr = mctx.track, cur = current(); let pos = {};
+    try { if (cur && cur.id === tr.id && yt && yt.getDuration) pos = { cur: yt.getCurrentTime(), dur: yt.getDuration() }; } catch {}
+    closeMenu(); window.NadaStory.open(tr, pos);
+  }
   else if (a === 'toimport') { mctx.mode = 'import'; mctx.err = ''; renderMenu(); $('#impCode')?.focus(); }
   else if (a === 'like') { toggleFav(track); closeMenu(); }
   else if (a === 'toplaylist') { mctx.mode = 'pl'; renderMenu(); $('#menuBody button')?.focus(); }

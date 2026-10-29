@@ -635,3 +635,32 @@ html.is-playing .play-btn { animation: playGlow 2.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+/* ---------- Bagikan ke Story ---------- */
+.story { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; padding: calc(.5rem + var(--safe-t)) 1rem calc(1rem + var(--safe-b));
+  background: radial-gradient(120% 60% at 50% 0%, #2a1a2a 0%, #0b0b10 70%); opacity: 0; transition: opacity .22s ease; gap: .75rem; }
+.story.show { opacity: 1; }
+.story-head { width: 100%; max-width: 28rem; display: flex; align-items: center; justify-content: space-between; }
+.story-head b { font-size: 1rem; }
+.story-sp { width: 2.75rem; }
+.story-stage { position: relative; flex: 1 1 0; min-height: 0; width: 100%; }
+.story-stage canvas { position: absolute; inset: 0; margin: auto; width: 0; height: 0; border-radius: 1.125rem; box-shadow: 0 1rem 3rem rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.08); background: #14141c; opacity: 0; transform: scale(.97); transition: opacity .3s, transform .35s var(--ease); }
+.story-load { inset: 0; margin: auto; width: fit-content; height: fit-content; }
+.story.ready .story-stage canvas { opacity: 1; transform: none; }
+.story-load { position: absolute; display: flex; gap: .375rem; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.story.loading .story-load { opacity: 1; }
+.story-load i { width: .5rem; height: 1.5rem; border-radius: .25rem; background: linear-gradient(var(--accent), var(--accent-2)); animation: eqb .9s ease-in-out infinite; transform-origin: bottom; }
+.story-load i:nth-child(2) { animation-delay: .2s; } .story-load i:nth-child(3) { animation-delay: .4s; }
+.story-pick { width: 100%; max-width: 28rem; text-align: center; }
+.story-pick small { display: block; color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .5rem; }
+.story-tpls { display: flex; justify-content: center; gap: .75rem; }
+.stpl { display: flex; flex-direction: column; align-items: center; gap: .375rem; padding: .375rem; border-radius: .875rem; border: 2px solid transparent; color: var(--muted); font-size: .75rem; font-weight: 600; outline: none; transition: border-color .15s, color .15s, transform .15s var(--ease); }
+.stpl canvas { width: 3.375rem; height: 6rem; border-radius: .5rem; background: var(--panel-2); display: block; }
+.stpl[aria-pressed="true"] { border-color: var(--accent); color: var(--text); }
+.stpl:active { transform: scale(.94); }
+.stpl:focus-visible { outline: .1875rem solid #fff; outline-offset: .125rem; }
+.story-actions { width: 100%; max-width: 28rem; display: flex; gap: .625rem; }
+.story-actions .pill { flex: 1; justify-content: center; }
+.story-actions .pill:first-child { flex: 2; }
+.story-actions .pill svg { fill: none; stroke: currentColor; }
+.story-tip { margin: 0; color: var(--muted); font-size: .8125rem; text-align: center; min-height: 1.2em; max-width: 28rem; }
