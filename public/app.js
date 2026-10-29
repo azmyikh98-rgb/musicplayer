@@ -351,6 +351,7 @@ function renderPlayer() {
   $('#miniTitle').textContent = t.title;
   $('#miniArtist').textContent = t.artist;
   $('#miniArt').src = t.thumb || thumb(t.id);
+  $('#mini').style.setProperty('--art', `url("${(t.thumb || thumb(t.id)).replace(/"/g, '')}")`);
   $('#pbg i').style.backgroundImage = `url("${(t.thumb || thumb(t.id)).replace(/"/g, '')}")`;
   $('#favBtn').classList.toggle('on', isFav(t.id));
   document.title = `${t.title} · Nada`;
@@ -1136,7 +1137,18 @@ $('#list').addEventListener('click', (e) => {
 
 document.querySelectorAll('.tabs button[data-tab]').forEach((b) => b.addEventListener('click', () => setTab(b.dataset.tab)));
 
+/* geser kartu mini: kiri = lagu berikutnya, kanan = sebelumnya, atas = buka pemutar */
+let miniSw = null, miniSwiped = false;
+$('#mini').addEventListener('pointerdown', (e) => { miniSw = { x: e.clientX, y: e.clientY }; miniSwiped = false; });
+window.addEventListener('pointerup', (e) => {
+  if (!miniSw) return;
+  const dx = e.clientX - miniSw.x, dy = e.clientY - miniSw.y; miniSw = null;
+  if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { miniSwiped = true; dx < 0 ? next() : prev(); }
+  else if (dy < -40 && Math.abs(dy) > Math.abs(dx)) { miniSwiped = true; $('#player').classList.add('open'); }
+});
+window.addEventListener('pointercancel', () => { miniSw = null; });
 $('#mini').addEventListener('click', (e) => {
+  if (miniSwiped) { miniSwiped = false; return; }
   if (e.target.closest('#miniPlay')) return toggle();
   if (e.target.closest('#miniNext')) return next();
   $('#player').classList.add('open');
