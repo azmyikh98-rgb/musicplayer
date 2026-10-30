@@ -270,20 +270,22 @@ function homeHTML() {
 }
 
 function searchHTML() {
-  const gb = state.genre ? genreBar() : '';
-  if (state.loading) return gb + '<div class="tracks">' + '<div class="skeleton"></div>'.repeat(7) + '</div>';
-  if (state.error) return gb + `<div class="tracks"><div class="empty"><b>Ups</b>${esc(state.error)}</div></div>`;
-  if (!state.results.length) {
+  // Mode "home": pilihan genre dulu. Mode "results": daftar lagu hasil genre / pencarian, dengan tombol kembali.
+  if (state.sMode !== 'results') {
     const chip = (q) => `<button class="qchip" data-nav data-q="${esc(q)}">${esc(q)}</button>`;
     const hist = state.history.slice(0, 8);
     const tries = STARTER_ARTISTS.filter((n) => !hist.some((h) => lc(h) === lc(n))).slice(0, 8);
-    return `<div class="searchhome"><div class="empty sm"><b>Lagi pengen dengerin apa?</b>Ketik judul lagu atau nama artis. Filter "Resmi" bikin hasilnya bebas reupload, video lirik, dan cover.</div>`
+    return `<div class="searchhome">`
+      + genreSection()
       + (hist.length ? `<div class="sh-head"><h3>Pencarian terakhir</h3><button class="link" data-nav data-clearhist>Hapus</button></div><div class="qchips">${hist.map(chip).join('')}</div>` : '')
-      + `<div class="sh-head"><h3>Coba cari</h3></div><div class="qchips">${tries.map(chip).join('')}</div>`
-      + genreSection() + `</div>`;
+      + `<div class="sh-head"><h3>Coba cari</h3></div><div class="qchips">${tries.map(chip).join('')}</div></div>`;
   }
-  const label = state.genre ? `di genre <b>${esc(state.genre)}</b>` : (state.q && !/^https?:/i.test(state.q) ? `untuk <b>${esc(state.q)}</b>` : '');
-  return gb + `<div class="res-h"><span>${state.results.length} lagu ${label}</span><span class="res-act"><button class="pill sm" data-nav data-playall="search">${ICON.play}<span>Putar</span></button><button class="pill ghost sm" data-nav data-shuffleall="search">${ICON.shuffle}<span>Acak</span></button></span></div><div class="tracks">` + state.results.map((t, i) => rowHTML(t, i, 'search')).join('') + '</div>';
+  const title = state.genre || (state.q && !/^https?:/i.test(state.q) ? state.q : 'Hasil pencarian');
+  const top = `<div class="rtop"><button class="icon-btn" data-nav data-sback aria-label="Kembali ke pilihan genre">${ICON.back}</button><div class="rt"><small>${state.genre ? 'Genre' : 'Hasil pencarian'}</small><b>${esc(title)}</b></div></div>`;
+  const gb = state.genre ? genreBar() : '';
+  if (state.loading) return top + gb + '<div class="tracks">' + '<div class="skeleton"></div>'.repeat(7) + '</div>';
+  if (state.error) return top + gb + `<div class="tracks"><div class="empty"><b>Ups</b>${esc(state.error)}</div></div>`;
+  return top + gb + `<div class="res-h"><span>${state.results.length} lagu</span><span class="res-act"><button class="pill sm" data-nav data-playall="search">${ICON.play}<span>Putar</span></button><button class="pill ghost sm" data-nav data-shuffleall="search">${ICON.shuffle}<span>Acak</span></button></span></div><div class="tracks">` + state.results.map((t, i) => rowHTML(t, i, 'search')).join('') + '</div>';
 }
 
 function libraryHTML() {
@@ -367,7 +369,7 @@ function render() {
 
   el.querySelectorAll('.hscroll').forEach((h, i) => { h.scrollLeft = scrolls[i] || 0; });
   if (routeChanged) el.scrollTop = scrollPos[route] || 0;
-  if (state.tab === 'search' && !state.view && (state.genre || state.q) && !$('#q').value && document.activeElement !== $('#q')) { $('#q').value = state.genre || state.q; $('#qClear').hidden = false; }
+  if (state.tab === 'search' && state.sMode === 'results' && !state.view && (state.genre || state.q) && !$('#q').value && document.activeElement !== $('#q')) { $('#q').value = state.genre || state.q; $('#qClear').hidden = false; }
   navSync();
   if (fKey) {
     let t = null;
@@ -439,10 +441,13 @@ function setTab(tab) {
   // tap tab yang sedang aktif: tutup halaman dalam, atau gulir ke atas
   if (tab === state.tab) {
     if (state.view) { closeView(); return; }
+    if (state.tab === 'search' && state.sMode === 'results') { searchBack(); return; }
+    if (tab === 'search' && state.sMode === 'results') { searchBack(); return; }
     if ($('#list').scrollTop > 4) { $('#list').scrollTo({ top: 0, behavior: 'smooth' }); return; }
     if (tab === 'search') $('#q').focus();
     return;
   }
+  if (tab === 'search') { state.sMode = 'home'; state.genre = ''; state._gq = ''; $('#q').value = ''; $('#qClear').hidden = true; }
   state.tab = tab; state.view = null; state.confirmDel = false;
   store.set('tab', tab);
   render();
@@ -454,6 +459,11 @@ function openView(ctx) {
   render(); $('#list').scrollTop = 0;
   if (ctx.startsWith('chart')) loadCharts();
 }
+function searchBack() {
+  state.sMode = 'home'; state.genre = ''; state._gq = ''; state.loading = false; state.error = '';
+  $('#q').value = ''; $('#qClear').hidden = true; hideSuggest();
+  render(); $('#list').scrollTop = 0;
+}
 function closeView() { state.view = null; state.confirmDel = false; render(); }
 
 /* Tombol kembali bawaan HP / browser: tutup lapisan paling atas (menu, pemutar, lalu halaman dalam)
@@ -461,7 +471,7 @@ function closeView() { state.view = null; state.confirmDel = false; render(); }
 let navPushed = 0, navSilent = false;
 const navLayers = () => {
   const full = document.documentElement.dataset.layout !== 'desktop' && !document.documentElement.classList.contains('tv');
-  return (!$('#menu').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
+  return (!$('#menu').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab === 'search' && state.sMode === 'results' ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
 };
 function navSync() {
   const n = navLayers();
@@ -476,6 +486,7 @@ window.addEventListener('popstate', () => {
   if (!$('#menu').hidden) closeMenu();
   else if ($('#player').classList.contains('open') && document.documentElement.dataset.layout !== 'desktop') $('#player').classList.remove('open');
   else if (state.view) closeView();
+  else if (state.tab === 'search' && state.sMode === 'results') searchBack();
   else if (state.tab !== 'home') setTab('home');
 });
 new MutationObserver(navSync).observe($('#player'), { attributes: true, attributeFilter: ['class'] });
@@ -486,11 +497,11 @@ new MutationObserver(navSync).observe($('#menu'), { attributes: true, attributeF
   let g = null;
   window.addEventListener('touchstart', (e) => {
     const t = e.touches[0];
-    g = t.clientX < 22 && (state.view || (!$('#menu').hidden)) ? { x: t.clientX, y: t.clientY } : null;
+    g = t.clientX < 22 && (state.view || (state.tab === 'search' && state.sMode === 'results') || (!$('#menu').hidden)) ? { x: t.clientX, y: t.clientY } : null;
   }, { passive: true });
   window.addEventListener('touchend', (e) => {
     if (!g) return; const t = e.changedTouches[0], dx = t.clientX - g.x, dy = Math.abs(t.clientY - g.y); g = null;
-    if (dx > 70 && dy < 60) { if (!$('#menu').hidden) closeMenu(); else if (state.view) closeView(); }
+    if (dx > 70 && dy < 60) { if (!$('#menu').hidden) closeMenu(); else if (state.view) closeView(); else if (state.tab === 'search' && state.sMode === 'results') searchBack(); }
   }, { passive: true });
 })();
 
@@ -552,6 +563,7 @@ function pushHistory(q) {
 
 async function search(q) {
   if (q !== state._gq) state.genre = '';
+  state.sMode = 'results';
   state.tab = 'search'; state.view = null; state.q = q; state.error = ''; state.loading = true;
   store.set('tab', 'search'); hideSuggest(); render();
   if (!/^https?:\/\//i.test(q)) pushHistory(q);
@@ -1251,7 +1263,7 @@ $('#searchForm').addEventListener('submit', (e) => {
 });
 $('#q').addEventListener('input', onType);
 $('#q').addEventListener('input', () => { $('#qClear').hidden = !$('#q').value; });
-$('#qClear').addEventListener('click', () => { $('#q').value = ''; $('#qClear').hidden = true; $('#q').focus(); onType(); });
+$('#qClear').addEventListener('click', () => { $('#q').value = ''; $('#qClear').hidden = true; if (state.tab === 'search' && state.sMode === 'results') searchBack(); $('#q').focus(); onType(); });
 $('#list').addEventListener('scroll', () => document.querySelector('.top').classList.toggle('scrolled', $('#list').scrollTop > 6), { passive: true });
 $('#q').addEventListener('focus', onType);
 $('#q').addEventListener('blur', () => setTimeout(() => { if (!$('#suggest').contains(document.activeElement)) hideSuggest(); }, 160));
@@ -1288,6 +1300,7 @@ $('#list').addEventListener('click', (e) => {
   if ((el = t.closest('[data-pl]'))) { openView('pl:' + el.dataset.pl); return; }
   if (t.closest('[data-manageart]')) { openMenu(null, null, 'artists'); return; }
   if ((el = t.closest('[data-followart]'))) { const n = el.dataset.followart; if (isFollowing(n)) { unfollowArtist(n); } else followArtist(n, el.closest('.artist')?.querySelector('img')?.src || ''); render(); return; }
+  if (t.closest('[data-sback]')) { searchBack(); return; }
   if ((el = t.closest('[data-genre]'))) { runGenre(+el.dataset.genre); return; }
   if ((el = t.closest('[data-q]'))) { runSearch(el.dataset.q); return; }
   if (t.closest('[data-clearhist]')) { state.history = []; store.set('history', []); render(); return; }

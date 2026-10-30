@@ -754,3 +754,10 @@ html[data-layout=phone] .tabs button svg{width:1.4rem;height:1.4rem}
 .sec-head{margin-bottom:.625rem}
 .top h1{background:none;color:inherit;width:auto}
 .qwrap .qi{z-index:2;pointer-events:none}.qwrap .qclear{z-index:2}
+
+/* ---- Cari: bar kembali di hasil ---- */
+.rtop{display:flex;align-items:center;gap:.5rem;padding:.125rem .25rem .5rem}
+.rtop .rt{min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.rtop .rt small{font-size:.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.rtop .rt b{font-size:1.25rem;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.searchhome .sec{margin-top:.5rem}
