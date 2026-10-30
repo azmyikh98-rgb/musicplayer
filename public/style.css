@@ -680,9 +680,17 @@ html.is-playing .play-btn { animation: playGlow 2.6s ease-in-out infinite; }
 .story-len button:focus-visible { outline: .125rem solid var(--accent); outline-offset: .125rem; }
 
 /* ---- Beranda: zona & subjudul ---- */
-.zone{margin:30px 8px -2px;padding-top:18px;border-top:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:2px}
-.zone small{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent,#1ed7a0);opacity:.9}
-.zone h2{font-size:24px;letter-spacing:-.02em;margin:0}
 .sec-head h2{display:flex;flex-direction:column;gap:1px}
 .sec-head h2 .sub{font-size:12px;font-weight:500;color:var(--muted,#9aa0a6);letter-spacing:0}
 .top5{margin-bottom:12px}
+
+.zone{margin:26px 8px 2px;display:flex;align-items:center;gap:12px}
+.zone span{font-size:11px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--accent,#ff6b6b);white-space:nowrap}
+.zone::after{content:"";flex:1;height:1px;background:rgba(255,255,255,.08)}
+.genres{margin:0 8px;display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.gtile{position:relative;overflow:hidden;min-height:64px;border:0;border-radius:14px;padding:12px 14px;text-align:left;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--g),var(--g2));transition:transform .15s}
+.gtile b{font-size:15px;font-weight:800;letter-spacing:-.01em;text-shadow:0 1px 6px rgba(0,0,0,.35)}
+.gtile::after{content:"";position:absolute;right:-14px;bottom:-18px;width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.18)}
+.gtile:active{transform:scale(.97)}
+.gtile:focus-visible{outline:2px solid #fff;outline-offset:2px}
+html[data-layout=tablet] .genres,html[data-layout=desktop] .genres,html.tv .genres{grid-template-columns:repeat(4,1fr)}

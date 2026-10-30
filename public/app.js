@@ -135,7 +135,7 @@ function cardHTML(t, i, ctx, rank) {
   </div>`;
 }
 
-const zone = (kick, title) => `<div class="zone"><small>${kick}</small><h2>${title}</h2></div>`;
+const zone = (kick) => `<div class="zone"><span>${kick}</span></div>`;
 const section = (title, inner, seeAll, sub) =>
   `<section class="sec"><div class="sec-head"><h2>${title}${sub ? `<small class="sub">${sub}</small>` : ''}</h2>${seeAll ? `<button class="link" data-nav data-open="${seeAll}">Lihat semua</button>` : ''}</div>${inner}</section>`;
 const hscroll = (items) => `<div class="hs"><button class="hs-btn l" data-hs="-1" tabindex="-1" aria-label="Geser ke kiri">‹</button><div class="hscroll">${items.join('')}</div><button class="hs-btn r" data-hs="1" tabindex="-1" aria-label="Geser ke kanan">›</button></div>`;
@@ -188,6 +188,25 @@ function chartsBlock() {
     <div class="segs">${seg('ID', 'Indonesia')}${seg('GLOBAL', 'Global')}</div>${inner}</section>`;
 }
 
+const GENRES = [
+  ['Pop Indonesia', 'lagu pop indonesia terbaru', '#ff5f7e,#ff9a5a'],
+  ['Hip-Hop', 'lagu hip hop rap terbaru', '#8a5cff,#4b7bff'],
+  ['Indie', 'lagu indie indonesia', '#20c997,#3b9ae1'],
+  ['Dangdut', 'lagu dangdut terbaru', '#f7b733,#fc4a1a'],
+  ['Rock', 'lagu rock terbaik', '#e53935,#6a1b1b'],
+  ['R&B', 'lagu rnb soul terbaru', '#b24bf3,#ff6fb5'],
+  ['EDM', 'lagu edm dance terbaru', '#00d4ff,#7a5cff'],
+  ['K-Pop', 'kpop lagu terbaru', '#ff6ec4,#7873f5'],
+  ['Akustik', 'lagu akustik santai', '#c8a46a,#7a5a2e'],
+  ['Lo-fi', 'lofi chill lagu', '#4facfe,#2a3a6b'],
+  ['Jazz', 'lagu jazz santai', '#f6d365,#a0522d'],
+  ['Galau', 'lagu galau indonesia', '#5c6b8a,#2b3350'],
+];
+function genreSection() {
+  const tiles = GENRES.map(([n, q, g]) => `<button class="gtile" data-nav data-q="${esc(q)}" style="--g:${g.split(',')[0]};--g2:${g.split(',')[1]}" aria-label="Cari lagu ${esc(n)}"><b>${esc(n)}</b></button>`);
+  return `<section class="sec"><div class="sec-head"><h2>Genre<small class="sub">Pilih suasana, kami carikan lagunya</small></h2></div><div class="genres">${tiles.join('')}</div></section>`;
+}
+
 function homeHTML() {
   const h = new Date().getHours();
   const greet = h < 11 ? 'Pagi, yuk gas!' : h < 15 ? 'Siang, lagi ngapain?' : h < 18 ? 'Sore, waktunya santai' : 'Malam, mau muter apa?';
@@ -215,15 +234,17 @@ function homeHTML() {
     + `</div>`;
 
   // 3. lagi ramai: tangga lagu di atas supaya beranda langsung terasa hidup
-  out += zone('Jelajahi', 'Lagi ramai') + chartsBlock();
+  out += zone('Jelajahi') + chartsBlock();
+
+  out += genreSection();
 
   // 4. untukmu: riwayat dan lagu yang disukai
-  if (state.recent.length || state.fav.length) out += zone('Untukmu', 'Lanjut dengerin');
+  if (state.recent.length || state.fav.length) out += zone('Untukmu');
   if (state.recent.length) out += section('Putar lagi', hscroll(state.recent.slice(0, 12).map((t, i) => cardHTML(t, i, 'recent'))), 'recent', 'Terakhir kamu putar');
   if (state.fav.length) out += section('Liked Songs', hscroll(state.fav.slice(0, 12).map((t, i) => cardHTML(t, i, 'liked'))), 'liked', state.fav.length + ' lagu favoritmu');
 
   // 5. koleksi
-  out += zone('Koleksi', 'Punyamu');
+  out += zone('Koleksi');
   const plCards = state.playlists.map((p) => {
     const first = p.tracks[0];
     return `<div class="card pl" data-nav tabindex="0" role="button" data-pl="${p.id}" aria-label="Buka playlist ${esc(p.name)}">
@@ -234,7 +255,7 @@ function homeHTML() {
   out += section('Playlist Kamu', hscroll(plCards), '', state.playlists.length ? state.playlists.length + ' playlist' : 'Bikin yang pertama'); 
 
   // 6. artis
-  out += zone('Kenalan', 'Artis') + artistsSection() + popularSection();
+  out += zone('Kenalan') + artistsSection() + popularSection();
   return out + '</div>';
 }
 
