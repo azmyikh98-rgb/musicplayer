@@ -4,7 +4,9 @@
    (audio YouTube tidak bisa dibaca dari luar iframe).
    Pakai: NadaStory.open({ id, title, artist }, { cur, dur })  (detik, opsional) */
 (function () {
-  const W = 1080, H = 1920, DUR = 6;           // DUR detik: semua gerakan berulang rapi tiap 6 detik
+  const W = 1080, H = 1920, DUR = 6;           // DUR = siklus gerakan (berulang tiap 6 detik). Panjang video dipilih terpisah (LENS)
+  const LENS = [10, 20, 30];                   // pilihan panjang video (detik), maksimal 30
+  const getLen = () => { try { const v = +localStorage.getItem('storyLen'); return LENS.includes(v) ? v : 30; } catch (e) { return 30; } };
   const FONT_A = '"Bricolage Grotesque","SF Pro Display",system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif';
   const FONT_B = '"Permanent Marker","Marker Felt","Bradley Hand","Segoe Print","Comic Sans MS",cursive';
   const $ = (s) => document.querySelector(s);
@@ -127,6 +129,7 @@
     const A = [2, 4, 6][i % 3], B = [3, 5, 7, 4][i % 4];
     const env = Math.sin(Math.PI * (i + .5) / n);
     let v = .4 + .24 * Math.sin(TAU * A * t / DUR + i * .9 + ph) + .18 * Math.sin(TAU * B * t / DUR + i * 1.7 + ph * 2);
+    v += .09 * Math.sin(TAU * t / 30 * (1 + i % 4) + i * 2.3 + ph);   // melayang pelan: siklus penuh 30 detik
     v *= (.55 + .5 * env) * (.62 + .55 * beatOf(t) * (.55 + .45 * env));
     return clamp(v, .07, 1);
   }
@@ -217,7 +220,6 @@
         rr(c, x, base - hh, bw, hh, 8); c.fillStyle = col; c.fill();
         rr(c, x, base + 10, bw, hh * .28, 8); c.fillStyle = `hsla(${(hue + i / n * 60) % 360},100%,70%,.16)`; c.fill();
       }
-      if (d.dur) { c.font = `600 28px ${FONT_A}`; c.fillStyle = 'rgba(255,255,255,.6)'; c.textAlign = 'right'; c.fillText(fmt(d.cur) + ' / ' + fmt(d.dur), W - 100, base + 70); c.textAlign = 'left'; }
     },
   };
 
@@ -298,12 +300,11 @@
       c.font = `800 42px ${FONT_A}`; c.fillText(label, -lw / 2 + 98, 5); c.restore(); c.textBaseline = 'alphabetic';
       // kapsul mini player + visualizer pengganti progress bar
       c.drawImage(L.front, 0, 0, W, H);
-      const mx = 120, my = 1500, mwid = W - 240, bx = mx + 130, bw = mwid - 130 - (d.dur ? 190 : 60), n = 24, bwid = 12, gap = (bw - n * bwid) / (n - 1);
+      const mx = 120, my = 1500, mwid = W - 240, bx = mx + 130, bw = mwid - 130 - 60, n = 24, bwid = 12, gap = (bw - n * bwid) / (n - 1);
       for (let i = 0; i < n; i++) {
         const hh = Math.max(18, 92 * level(t, i, n, ph)), x = bx + i * (bwid + gap);
         rr(c, x, my + 60 - hh / 2, bwid, hh, 6); c.fillStyle = i % 4 === 3 ? '#111' : `hsl(${hue},90%,52%)`; c.fill();
       }
-      if (d.dur) { c.font = `800 30px ${FONT_A}`; c.fillStyle = '#111'; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText(fmt(d.cur), mx + mwid - 36, my + 62); c.textAlign = 'left'; c.textBaseline = 'alphabetic'; }
     },
   };
 
@@ -345,8 +346,8 @@
     const mime = pickMime(); if (!mime) { S.noVideo = true; ui(); return; }
     const cv = document.createElement('canvas'); cv.width = 720; cv.height = 1280;
     paint(cv, i, 0);
-    let mr; try { mr = new MediaRecorder(cv.captureStream(30), { mimeType: mime, videoBitsPerSecond: 5e6 }); } catch (e) { S.noVideo = true; ui(); return; }
-    const R = { tpl: i, cv, mr, chunks: [], t0: 0, pct: 0, mime, cancel: false };
+    let mr; try { mr = new MediaRecorder(cv.captureStream(30), { mimeType: mime, videoBitsPerSecond: 4e6 }); } catch (e) { S.noVideo = true; ui(); return; }
+    const R = { tpl: i, cv, mr, chunks: [], t0: 0, pct: 0, mime, cancel: false, len: S.len };
     mr.ondataavailable = (e) => { if (e.data && e.data.size) R.chunks.push(e.data); };
     mr.onstop = () => {
       if (R.cancel) return;
@@ -359,8 +360,8 @@
     const R = S.rec; if (!R || R.cancel) return;
     if (!R.t0) R.t0 = now;
     const t = (now - R.t0) / 1000;
-    if (t >= DUR) { paint(R.cv, R.tpl, 0); R.pct = 1; if (R.mr.state !== 'inactive') R.mr.stop(); ui(); return; }
-    paint(R.cv, R.tpl, t); R.pct = t / DUR;
+    if (t >= R.len) { paint(R.cv, R.tpl, 0); R.pct = 1; if (R.mr.state !== 'inactive') R.mr.stop(); ui(); return; }
+    paint(R.cv, R.tpl, t); R.pct = t / R.len;
     if (now - (R.lastUi || 0) > 200) { R.lastUi = now; ui(); }
   }
 
@@ -389,12 +390,13 @@
     $('#storyStill').hidden = !S.data || S.noVideo;
     $('#storyTip').textContent = !S.data ? '' : S.noVideo
       ? 'HP-mu belum bisa bikin video, jadi dibagikan sebagai gambar. Tempel link lagu di stiker Link.'
-      : 'Video 6 detik tanpa suara. Tambah lagunya lewat stiker Musik di Instagram, lalu tempel link-nya di stiker Link.';
+      : `Video ${S.len} detik tanpa suara. Tambah lagunya lewat stiker Musik di Instagram, lalu tempel link-nya di stiker Link.`;
+    document.querySelectorAll('#storyLen button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.s === S.len)));
   }
 
   async function open(track, opt) {
     opt = opt || {};
-    S = { track, tpl: +(localStorage.getItem('storyTpl') || 0) || 0, data: null, vids: {}, rec: null, layers: null, t0: 0, lastPaint: 0, raf: 0 };
+    S = { track, len: getLen(), tpl: +(localStorage.getItem('storyTpl') || 0) || 0, data: null, vids: {}, rec: null, layers: null, t0: 0, lastPaint: 0, raf: 0 };
     if (S.tpl >= TEMPLATES.length) S.tpl = 0;
     const el = $('#story'); el.hidden = false; el.classList.remove('ready'); el.classList.add('loading'); fitCanvas();
     requestAnimationFrame(() => el.classList.add('show'));
@@ -467,6 +469,13 @@
       const b = e.target.closest('.stpl'); if (!b || !S || !S.data) return;
       S.tpl = +b.dataset.i; try { localStorage.setItem('storyTpl', S.tpl); } catch (er) {}
       markPicked(); startRecord(); ui();
+    });
+    $('#storyLen').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-s]'); if (!b || !S) return;
+      const v = +b.dataset.s; if (v === S.len) return;
+      S.len = v; try { localStorage.setItem('storyLen', v); } catch (er) {}
+      if (S.rec) { S.rec.cancel = true; try { S.rec.mr.stop(); } catch (er) {} S.rec = null; }
+      S.vids = {}; if (S.data) startRecord(); ui();
     });
     $('#storyClose').addEventListener('click', close);
     $('#story').addEventListener('click', (e) => { if (e.target.id === 'story') close(); });

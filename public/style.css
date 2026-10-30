@@ -671,3 +671,10 @@ html.is-playing .play-btn { animation: playGlow 2.6s ease-in-out infinite; }
 .story-more button { color: var(--muted); font-size: .8125rem; text-decoration: underline; text-underline-offset: .2em; padding: .25rem .5rem; border-radius: .5rem; outline: none; }
 .story-more button:focus-visible { outline: .1875rem solid #fff; }
 .story-more button[hidden] { display: none; }
+
+.story-lenrow { display: flex; align-items: center; justify-content: center; gap: .625rem; width: 100%; max-width: 28rem; }
+.story-lenrow small { color: var(--muted); font-size: .75rem; text-transform: uppercase; letter-spacing: .06em; }
+.story-len { display: flex; gap: .25rem; padding: .1875rem; background: rgba(255,255,255,.08); border-radius: 1.25rem; }
+.story-len button { padding: .3125rem .75rem; border-radius: 1rem; font-size: .8125rem; font-weight: 600; color: var(--muted); outline: none; transition: background .15s, color .15s; }
+.story-len button[aria-pressed="true"] { background: #fff; color: #0e0e13; }
+.story-len button:focus-visible { outline: .125rem solid var(--accent); outline-offset: .125rem; }
