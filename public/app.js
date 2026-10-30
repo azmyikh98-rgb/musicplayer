@@ -236,8 +236,6 @@ function homeHTML() {
   // 3. lagi ramai: tangga lagu di atas supaya beranda langsung terasa hidup
   out += zone('Jelajahi') + chartsBlock();
 
-  out += genreSection();
-
   // 4. untukmu: riwayat dan lagu yang disukai
   if (state.recent.length || state.fav.length) out += zone('Untukmu');
   if (state.recent.length) out += section('Putar lagi', hscroll(state.recent.slice(0, 12).map((t, i) => cardHTML(t, i, 'recent'))), 'recent', 'Terakhir kamu putar');
@@ -268,7 +266,8 @@ function searchHTML() {
     const tries = STARTER_ARTISTS.filter((n) => !hist.some((h) => lc(h) === lc(n))).slice(0, 8);
     return `<div class="searchhome"><div class="empty sm"><b>Lagi pengen dengerin apa?</b>Ketik judul lagu atau nama artis. Filter "Resmi" bikin hasilnya bebas reupload, video lirik, dan cover.</div>`
       + (hist.length ? `<div class="sh-head"><h3>Pencarian terakhir</h3><button class="link" data-nav data-clearhist>Hapus</button></div><div class="qchips">${hist.map(chip).join('')}</div>` : '')
-      + `<div class="sh-head"><h3>Coba cari</h3></div><div class="qchips">${tries.map(chip).join('')}</div></div>`;
+      + `<div class="sh-head"><h3>Coba cari</h3></div><div class="qchips">${tries.map(chip).join('')}</div>`
+      + genreSection() + `</div>`;
   }
   return `<div class="res-h">${state.results.length} hasil${state.q && !/^https?:/i.test(state.q) ? ` untuk <b>${esc(state.q)}</b>` : ''}</div><div class="tracks">` + state.results.map((t, i) => rowHTML(t, i, 'search')).join('') + '</div>';
 }
