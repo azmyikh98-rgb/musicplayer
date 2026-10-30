@@ -202,8 +202,19 @@ const GENRES = [
   ['Jazz', 'lagu jazz santai', '#f6d365,#a0522d'],
   ['Galau', 'lagu galau indonesia', '#5c6b8a,#2b3350'],
 ];
+function genreBar() {
+  const chips = GENRES.map(([n], i) => `<button type="button" class="gchip${state.genre === n ? ' on' : ''}" data-nav data-genre="${i}" aria-pressed="${state.genre === n}">${esc(n)}</button>`);
+  return `<div class="gbar" role="group" aria-label="Pilih genre">${chips.join('')}</div>`;
+}
+function runGenre(i) {
+  const g = GENRES[i]; if (!g) return;
+  state.genre = g[0]; state._gq = g[1];
+  $('#q').value = g[0]; $('#qClear').hidden = false; hideSuggest();
+  search(g[1]);
+  $('#list').scrollTop = 0;
+}
 function genreSection() {
-  const tiles = GENRES.map(([n, q, g]) => `<button class="gtile" data-nav data-q="${esc(q)}" style="--g:${g.split(',')[0]};--g2:${g.split(',')[1]}" aria-label="Cari lagu ${esc(n)}"><b>${esc(n)}</b></button>`);
+  const tiles = GENRES.map(([n, q, g], i) => `<button class="gtile" data-nav data-genre="${i}" style="--g:${g.split(',')[0]};--g2:${g.split(',')[1]}" aria-label="Cari lagu ${esc(n)}"><b>${esc(n)}</b></button>`);
   return `<section class="sec"><div class="sec-head"><h2>Genre<small class="sub">Pilih suasana, kami carikan lagunya</small></h2></div><div class="genres">${tiles.join('')}</div></section>`;
 }
 
@@ -258,8 +269,9 @@ function homeHTML() {
 }
 
 function searchHTML() {
-  if (state.loading) return '<div class="tracks">' + '<div class="skeleton"></div>'.repeat(7) + '</div>';
-  if (state.error) return `<div class="tracks"><div class="empty"><b>Ups</b>${esc(state.error)}</div></div>`;
+  const gb = state.genre ? genreBar() : '';
+  if (state.loading) return gb + '<div class="tracks">' + '<div class="skeleton"></div>'.repeat(7) + '</div>';
+  if (state.error) return gb + `<div class="tracks"><div class="empty"><b>Ups</b>${esc(state.error)}</div></div>`;
   if (!state.results.length) {
     const chip = (q) => `<button class="qchip" data-nav data-q="${esc(q)}">${esc(q)}</button>`;
     const hist = state.history.slice(0, 8);
@@ -269,7 +281,8 @@ function searchHTML() {
       + `<div class="sh-head"><h3>Coba cari</h3></div><div class="qchips">${tries.map(chip).join('')}</div>`
       + genreSection() + `</div>`;
   }
-  return `<div class="res-h">${state.results.length} hasil${state.q && !/^https?:/i.test(state.q) ? ` untuk <b>${esc(state.q)}</b>` : ''}</div><div class="tracks">` + state.results.map((t, i) => rowHTML(t, i, 'search')).join('') + '</div>';
+  const label = state.genre ? `di genre <b>${esc(state.genre)}</b>` : (state.q && !/^https?:/i.test(state.q) ? `untuk <b>${esc(state.q)}</b>` : '');
+  return gb + `<div class="res-h"><span>${state.results.length} lagu ${label}</span><span class="res-act"><button class="pill sm" data-nav data-playall="search">${ICON.play}<span>Putar</span></button><button class="pill ghost sm" data-nav data-shuffleall="search">${ICON.shuffle}<span>Acak</span></button></span></div><div class="tracks">` + state.results.map((t, i) => rowHTML(t, i, 'search')).join('') + '</div>';
 }
 
 function libraryHTML() {
@@ -353,6 +366,7 @@ function render() {
 
   el.querySelectorAll('.hscroll').forEach((h, i) => { h.scrollLeft = scrolls[i] || 0; });
   if (routeChanged) el.scrollTop = scrollPos[route] || 0;
+  if (state.tab === 'search' && !state.view && (state.genre || state.q) && !$('#q').value && document.activeElement !== $('#q')) { $('#q').value = state.genre || state.q; $('#qClear').hidden = false; }
   navSync();
   if (fKey) {
     let t = null;
@@ -518,6 +532,7 @@ function pushHistory(q) {
 }
 
 async function search(q) {
+  if (q !== state._gq) state.genre = '';
   state.tab = 'search'; state.view = null; state.q = q; state.error = ''; state.loading = true;
   store.set('tab', 'search'); hideSuggest(); render();
   if (!/^https?:\/\//i.test(q)) pushHistory(q);
@@ -1254,6 +1269,7 @@ $('#list').addEventListener('click', (e) => {
   if ((el = t.closest('[data-pl]'))) { openView('pl:' + el.dataset.pl); return; }
   if (t.closest('[data-manageart]')) { openMenu(null, null, 'artists'); return; }
   if ((el = t.closest('[data-followart]'))) { const n = el.dataset.followart; if (isFollowing(n)) { unfollowArtist(n); } else followArtist(n, el.closest('.artist')?.querySelector('img')?.src || ''); render(); return; }
+  if ((el = t.closest('[data-genre]'))) { runGenre(+el.dataset.genre); return; }
   if ((el = t.closest('[data-q]'))) { runSearch(el.dataset.q); return; }
   if (t.closest('[data-clearhist]')) { state.history = []; store.set('history', []); render(); return; }
   if ((el = t.closest('[data-artist]'))) { runSearch(el.dataset.artist); return; }
