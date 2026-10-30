@@ -705,3 +705,9 @@ html[data-layout=tablet] .genres,html[data-layout=desktop] .genres,html.tv .genr
 .ly-auto{text-align:left;padding:.5rem .75rem;border-radius:12px;background:rgba(255,255,255,.08);color:var(--text);font-size:.75rem;font-weight:600;border:1px solid var(--accent)}
 .ly-warn{font-size:.6875rem;color:rgba(255,255,255,.55)}
 .ly-retry{margin-top:.5rem}
+
+/* ---- Navigasi: bar atas halaman dalam ---- */
+.vtop{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:.5rem;padding:.25rem .25rem .25rem;background:transparent;transition:background .2s,box-shadow .2s}
+.vtop .vt{flex:1;min-width:0;font-weight:700;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;opacity:0;transform:translateY(4px);transition:opacity .2s,transform .2s}
+.vtop.solid{background:rgba(11,11,16,.88);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);box-shadow:0 1px 0 rgba(255,255,255,.06)}
+.vtop.solid .vt{opacity:1;transform:none}

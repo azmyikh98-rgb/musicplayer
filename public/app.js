@@ -315,7 +315,7 @@ function viewHTML() {
   else if (uniq.length) cover = `<div class="vcover"><img src="${imgOf(byId(uniq[0]))}" alt=""></div>`;
   else cover = `<div class="vcover g">${ctx === 'liked' ? ICON.heart : ctx === 'recent' ? ICON.clock : ICON.list}</div>`;
   const canShare = n && (isPl || ctx === 'liked');
-  return `<div class="vtop"><button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button></div>
+  return `<div class="vtop"><button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><span class="vt">${title}</span></div>
   <div class="vhero">
     ${cover}
     <div class="vinfo">
@@ -333,10 +333,15 @@ function viewHTML() {
 }
 
 let lastRoute = '';
+const scrollPos = {};   // posisi gulir terakhir tiap halaman, supaya kembali tidak mulai dari atas lagi
 function render() {
   const el = $('#list');
   const route = state.tab + '|' + (state.view ? state.view.ctx : '');
-  if (route !== lastRoute) { lastRoute = route; el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter'); }
+  const routeChanged = route !== lastRoute;
+  if (routeChanged) {
+    if (lastRoute) scrollPos[lastRoute] = el.scrollTop;
+    lastRoute = route; el.classList.remove('enter'); void el.offsetWidth; el.classList.add('enter');
+  }
   document.querySelectorAll('.tabs button[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === state.tab));
 
   // jaga posisi geser carousel dan fokus (penting untuk remote TV)
@@ -348,6 +353,8 @@ function render() {
   el.innerHTML = state.view ? viewHTML() : state.tab === 'home' ? homeHTML() : state.tab === 'library' ? libraryHTML() : searchHTML();
 
   el.querySelectorAll('.hscroll').forEach((h, i) => { h.scrollLeft = scrolls[i] || 0; });
+  if (routeChanged) el.scrollTop = scrollPos[route] || 0;
+  navSync();
   if (fKey) {
     let t = null;
     if (fKey.play != null) t = el.querySelector(`[data-play="${CSS.escape(fKey.play)}"][data-i="${fKey.i}"]`);
@@ -415,17 +422,68 @@ function renderControls() {
 
 /* ---------- navigasi ---------- */
 function setTab(tab) {
+  // tap tab yang sedang aktif: tutup halaman dalam, atau gulir ke atas
+  if (tab === state.tab) {
+    if (state.view) { closeView(); return; }
+    if ($('#list').scrollTop > 4) { $('#list').scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    if (tab === 'search') $('#q').focus();
+    return;
+  }
   state.tab = tab; state.view = null; state.confirmDel = false;
   store.set('tab', tab);
-  render(); $('#list').scrollTop = 0;
+  render();
   if (tab === 'home' || tab === 'library') loadCharts();
 }
 function openView(ctx) {
   state.view = { ctx }; state.confirmDel = false;
+  delete scrollPos[state.tab + '|' + ctx];
   render(); $('#list').scrollTop = 0;
   if (ctx.startsWith('chart')) loadCharts();
 }
 function closeView() { state.view = null; state.confirmDel = false; render(); }
+
+/* Tombol kembali bawaan HP / browser: tutup lapisan paling atas (menu, pemutar, lalu halaman dalam)
+   alih-alih langsung keluar dari aplikasi. */
+let navPushed = 0, navSilent = false;
+const navLayers = () => {
+  const full = document.documentElement.dataset.layout !== 'desktop' && !document.documentElement.classList.contains('tv');
+  return (!$('#menu').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
+};
+function navSync() {
+  const n = navLayers();
+  try {
+    if (n > navPushed) { for (let i = navPushed; i < n; i++) history.pushState({ nada: i + 1 }, ''); navPushed = n; }
+    else if (n < navPushed) { const d = navPushed - n; navPushed = n; navSilent = true; history.go(-d); setTimeout(() => { navSilent = false; }, 400); }
+  } catch {}
+}
+window.addEventListener('popstate', () => {
+  if (navSilent) { navSilent = false; return; }
+  if (navPushed > 0) navPushed--;
+  if (!$('#menu').hidden) closeMenu();
+  else if ($('#player').classList.contains('open') && document.documentElement.dataset.layout !== 'desktop') $('#player').classList.remove('open');
+  else if (state.view) closeView();
+  else if (state.tab !== 'home') setTab('home');
+});
+new MutationObserver(navSync).observe($('#player'), { attributes: true, attributeFilter: ['class'] });
+new MutationObserver(navSync).observe($('#menu'), { attributes: true, attributeFilter: ['hidden'] });
+
+/* geser dari tepi kiri layar = kembali (iPhone standalone tidak punya gesture ini) */
+(function () {
+  let g = null;
+  window.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    g = t.clientX < 22 && (state.view || (!$('#menu').hidden)) ? { x: t.clientX, y: t.clientY } : null;
+  }, { passive: true });
+  window.addEventListener('touchend', (e) => {
+    if (!g) return; const t = e.changedTouches[0], dx = t.clientX - g.x, dy = Math.abs(t.clientY - g.y); g = null;
+    if (dx > 70 && dy < 60) { if (!$('#menu').hidden) closeMenu(); else if (state.view) closeView(); }
+  }, { passive: true });
+})();
+
+/* bar atas halaman dalam: judul muncul saat digulir */
+$('#list').addEventListener('scroll', () => {
+  const v = $('#list .vtop'); if (v) v.classList.toggle('solid', $('#list').scrollTop > 140);
+}, { passive: true });
 
 /* ---------- tangga lagu ---------- */
 function loadCharts() {
@@ -1374,6 +1432,8 @@ document.addEventListener('keydown', (e) => {
     if (!$('#suggest').hidden) { e.preventDefault(); hideSuggest(); $('#q').blur(); return; }
     if (typing) { t.blur(); return; }
     if (state.tv) { e.preventDefault(); if (state.view) closeView(); else $(`.tabs [data-tab="${state.tab}"]`)?.focus(); return; }
+    if ($('#player').classList.contains('open') && document.documentElement.dataset.layout !== 'desktop') { $('#player').classList.remove('open'); return; }
+    if (state.view) { closeView(); return; }
   }
 
   // panah bawah/atas di kolom cari ↔ daftar saran (non-TV)
