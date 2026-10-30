@@ -761,3 +761,23 @@ html[data-layout=phone] .tabs button svg{width:1.4rem;height:1.4rem}
 .rtop .rt small{font-size:.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .rtop .rt b{font-size:1.25rem;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .searchhome .sec{margin-top:.5rem}
+
+/* ================= Header v4: tanpa logo, navigasi di atas kolom cari ================= */
+html[data-layout=phone] .top h1{display:none}
+.top{padding:calc(.625rem + var(--safe-t)) 1rem .625rem}
+.navbar{display:flex;align-items:center;gap:.5rem;min-height:2.75rem;margin:0 -.25rem .5rem}
+.navbar[hidden]{display:none}
+.navbar.in{animation:nbIn .28s var(--ease)}
+@keyframes nbIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.navbar .icon-btn{flex:none;width:2.5rem;height:2.5rem;border-radius:50%;background:rgba(255,255,255,.07);display:grid;place-items:center}
+.navbar .icon-btn:active{transform:scale(.92)}
+.navbar .nt{min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.navbar .nt small{font-size:.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.navbar .nt b{font-size:1.1875rem;font-weight:800;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-layout=tablet] .navbar,html[data-layout=desktop] .navbar{margin-top:.25rem}
+/* spasi isi halaman */
+.list{padding-top:.5rem}
+.vhero{padding-top:.5rem}
+.gbar{padding-top:.25rem}
+.res-h{margin:.25rem .5rem .5rem}
+.greet-wrap{margin-top:.25rem}

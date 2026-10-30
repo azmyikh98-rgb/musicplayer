@@ -281,7 +281,7 @@ function searchHTML() {
       + `<div class="sh-head"><h3>Coba cari</h3></div><div class="qchips">${tries.map(chip).join('')}</div></div>`;
   }
   const title = state.genre || (state.q && !/^https?:/i.test(state.q) ? state.q : 'Hasil pencarian');
-  const top = `<div class="rtop"><button class="icon-btn" data-nav data-sback aria-label="Kembali ke pilihan genre">${ICON.back}</button><div class="rt"><small>${state.genre ? 'Genre' : 'Hasil pencarian'}</small><b>${esc(title)}</b></div></div>`;
+  const top = '';
   const gb = state.genre ? genreBar() : '';
   if (state.loading) return top + gb + '<div class="tracks">' + '<div class="skeleton"></div>'.repeat(7) + '</div>';
   if (state.error) return top + gb + `<div class="tracks"><div class="empty"><b>Ups</b>${esc(state.error)}</div></div>`;
@@ -330,8 +330,7 @@ function viewHTML() {
   else if (uniq.length) cover = `<div class="vcover"><img src="${imgOf(byId(uniq[0]))}" alt=""></div>`;
   else cover = `<div class="vcover g">${ctx === 'liked' ? ICON.heart : ctx === 'recent' ? ICON.clock : ICON.list}</div>`;
   const canShare = n && (isPl || ctx === 'liked');
-  return `<div class="vtop"><button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><span class="vt">${title}</span></div>
-  <div class="vhero">
+  return `<div class="vhero">
     ${cover}
     <div class="vinfo">
       <small class="vkind">${kind}</small>
@@ -370,6 +369,7 @@ function render() {
   el.querySelectorAll('.hscroll').forEach((h, i) => { h.scrollLeft = scrolls[i] || 0; });
   if (routeChanged) el.scrollTop = scrollPos[route] || 0;
   if (state.tab === 'search' && state.sMode === 'results' && !state.view && (state.genre || state.q) && !$('#q').value && document.activeElement !== $('#q')) { $('#q').value = state.genre || state.q; $('#qClear').hidden = false; }
+  renderNavbar();
   navSync();
   if (fKey) {
     let t = null;
@@ -378,6 +378,26 @@ function render() {
     t?.focus({ preventScroll: true });
   }
 }
+
+/* bar navigasi di atas kolom cari: tombol kembali + judul halaman dalam / hasil pencarian */
+function renderNavbar() {
+  const nb = $('#navbar'); let html = '';
+  if (state.view) {
+    const ctx = state.view.ctx, pl = ctx.startsWith('pl:') ? state.playlists.find((p) => p.id === ctx.slice(3)) : null;
+    const kind = pl ? 'Playlist' : ctx === 'liked' ? 'Koleksi' : ctx === 'recent' ? 'Riwayat' : 'Tangga lagu';
+    html = `<button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><div class="nt"><small>${kind}</small><b>${esc(pl ? pl.name : VIEW_TITLES[ctx] || '')}</b></div>`;
+  } else if (state.tab === 'search' && state.sMode === 'results') {
+    const title = state.genre || (state.q && !/^https?:/i.test(state.q) ? state.q : 'Hasil pencarian');
+    html = `<button class="icon-btn" data-nav data-sback aria-label="Kembali ke pilihan genre">${ICON.back}</button><div class="nt"><small>${state.genre ? 'Genre' : 'Hasil pencarian'}</small><b>${esc(title)}</b></div>`;
+  }
+  const had = !nb.hidden;
+  nb.innerHTML = html; nb.hidden = !html;
+  if (html && !had) { nb.classList.remove('in'); void nb.offsetWidth; nb.classList.add('in'); }
+}
+$('#navbar').addEventListener('click', (e) => {
+  if (e.target.closest('[data-back]')) closeView();
+  else if (e.target.closest('[data-sback]')) searchBack();
+});
 
 function markPlaying() {
   const id = current()?.id;
@@ -513,10 +533,6 @@ new MutationObserver(navSync).observe($('#menu'), { attributes: true, attributeF
     requestAnimationFrame(() => {
       tick = false;
       const y = list.scrollTop, d = y - last;
-      if (document.documentElement.dataset.layout === 'phone') {
-        if (y < 24 || d < -6) top.classList.remove('compact');
-        else if (d > 6 && y > 90) top.classList.add('compact');
-      } else top.classList.remove('compact');
       top.classList.toggle('lifted', y > 4);
       last = y;
     });
@@ -1432,7 +1448,7 @@ function seekBy(sec) {
 const visible = (el) => el.getClientRects().length > 0;
 function focusables() {
   if (!$('#menu').hidden) return [...document.querySelectorAll('#menu button, #menu input')].filter(visible);
-  return [...document.querySelectorAll('.tabs button, #q, #officialBtn, #suggest button, #list [data-nav], #pvVideo, #pvLyrics, #upnext [data-nav], #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
+  return [...document.querySelectorAll('.tabs button, #navbar [data-nav], #q, #officialBtn, #suggest button, #list [data-nav], #pvVideo, #pvLyrics, #upnext [data-nav], #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
 }
 
 // Navigasi spasial: pindah fokus ke elemen terdekat pada arah panah
