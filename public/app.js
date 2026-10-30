@@ -1352,6 +1352,21 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ---------- init ---------- */
+/* tautan lagu (/s/ID -> /?t=ID): langsung pilih lagunya dan buka pemutar */
+async function openSongFromLink() {
+  const id = new URLSearchParams(location.search).get('t');
+  if (!id || !/^[\w-]{11}$/.test(id)) return;
+  history.replaceState(null, '', location.pathname + (document.documentElement.classList.contains('tv') ? '?tv=1' : ''));
+  try {
+    const r = await fetch('/api/videos?ids=' + id); const d = await r.json();
+    const t = d.items && d.items[0] ? slim(d.items[0]) : { id, title: 'Lagu dari temanmu', artist: 'Nada' };
+    state.queue = [t]; state.idx = 0; load(0);
+    $('#player').classList.add('open');
+    toast('Lagu dari temanmu. Tap putar buat mulai!');
+  } catch { toast('Lagunya nggak bisa dibuka, coba lagi ya'); }
+}
+openSongFromLink();
+
 if (/[#?&](c|code|share)=/.test(location.hash)) {
   const linkText = location.href;
   try { history.replaceState(null, '', location.pathname + location.search); } catch {}

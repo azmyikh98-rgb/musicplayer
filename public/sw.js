@@ -1,4 +1,4 @@
-const CACHE = 'nada-v21';
+const CACHE = 'nada-v23';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/qr.js', '/story.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -14,7 +14,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   const url = new URL(req.url);
-  if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/')) return;
+  if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/s/')) return;
   // Network-first supaya update langsung terlihat, cache sebagai cadangan offline
   e.respondWith(
     fetch(req).then((res) => {

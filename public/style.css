@@ -664,3 +664,10 @@ html.is-playing .play-btn { animation: playGlow 2.6s ease-in-out infinite; }
 .story-actions .pill:first-child { flex: 2; }
 .story-actions .pill svg { fill: none; stroke: currentColor; }
 .story-tip { margin: 0; color: var(--muted); font-size: .8125rem; text-align: center; min-height: 1.2em; max-width: 28rem; }
+
+.story-actions .pill:disabled { cursor: default; }
+.story-actions .pill.busy { background: linear-gradient(90deg, var(--accent) var(--p, 0%), #2b2b38 var(--p, 0%)); color: #fff; }
+.story-more { display: flex; gap: 1.25rem; justify-content: center; }
+.story-more button { color: var(--muted); font-size: .8125rem; text-decoration: underline; text-underline-offset: .2em; padding: .25rem .5rem; border-radius: .5rem; outline: none; }
+.story-more button:focus-visible { outline: .1875rem solid #fff; }
+.story-more button[hidden] { display: none; }

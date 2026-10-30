@@ -107,12 +107,13 @@ html.nosplash #splash{display:none}
       <button id="storyClose" class="icon-btn" aria-label="Tutup"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       <b>Bagikan ke Story</b><span class="story-sp"></span>
     </div>
-    <div class="story-stage"><canvas id="storyCanvas" width="1080" height="1920" aria-label="Pratinjau story"></canvas><div class="story-load"><i></i><i></i><i></i></div></div>
+    <div class="story-stage"><canvas id="storyCanvas" width="540" height="960" aria-label="Pratinjau story"></canvas><div class="story-load"><i></i><i></i><i></i></div></div>
     <div class="story-pick"><small>Pilih template</small><div id="storyTpls" class="story-tpls" role="group" aria-label="Template"></div></div>
     <div class="story-actions">
-      <button id="storyShare" class="pill big" type="button"><svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg><span id="storyShareTxt">Bagikan ke Story</span></button>
+      <button id="storyShare" class="pill big" type="button" disabled><svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg><span id="storyShareTxt">Menyiapkan…</span></button>
       <button id="storySave" class="pill ghost big" type="button" hidden><svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg><span>Simpan</span></button>
     </div>
+    <div class="story-more"><button id="storyStill" type="button" hidden>Bagikan gambar diam</button><button id="storyLink" type="button">Salin link lagu</button></div>
     <p id="storyTip" class="story-tip"></p>
   </section>
 
