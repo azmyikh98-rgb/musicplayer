@@ -135,8 +135,9 @@ function cardHTML(t, i, ctx, rank) {
   </div>`;
 }
 
-const section = (title, inner, seeAll) =>
-  `<section class="sec"><div class="sec-head"><h2>${title}</h2>${seeAll ? `<button class="link" data-nav data-open="${seeAll}">Lihat semua</button>` : ''}</div>${inner}</section>`;
+const zone = (kick, title) => `<div class="zone"><small>${kick}</small><h2>${title}</h2></div>`;
+const section = (title, inner, seeAll, sub) =>
+  `<section class="sec"><div class="sec-head"><h2>${title}${sub ? `<small class="sub">${sub}</small>` : ''}</h2>${seeAll ? `<button class="link" data-nav data-open="${seeAll}">Lihat semua</button>` : ''}</div>${inner}</section>`;
 const hscroll = (items) => `<div class="hs"><button class="hs-btn l" data-hs="-1" tabindex="-1" aria-label="Geser ke kiri">‹</button><div class="hscroll">${items.join('')}</div><button class="hs-btn r" data-hs="1" tabindex="-1" aria-label="Geser ke kanan">›</button></div>`;
 
 function artistsSection() {
@@ -144,7 +145,7 @@ function artistsSection() {
   state.artists.forEach((a) => chips.push(
     `<div class="artist" data-nav tabindex="0" role="button" data-artist="${esc(a.name)}" aria-label="Cari lagu ${esc(a.name)}">${avatar(a)}<b>${esc(a.name)}</b></div>`));
   const body = hscroll(chips) + (state.artists.length ? '' : '<p class="hint">Follow artis dari daftar Artis Populer di bawah, atau tap Tambah buat ngetik nama artisnya.</p>');
-  return `<section class="sec"><div class="sec-head"><h2>Artis Favorit</h2><button class="link" data-nav data-manageart>Kelola</button></div>${body}</section>`;
+  return `<section class="sec"><div class="sec-head"><h2>Artis Favorit<small class="sub">${state.artists.length ? state.artists.length + ' diikuti' : 'Belum ada yang diikuti'}</small></h2><button class="link" data-nav data-manageart>Kelola</button></div>${body}</section>`;
 }
 
 /* Artis populer: dihitung dari tangga lagu (lengkap dengan foto), cadangan daftar bawaan */
@@ -167,7 +168,7 @@ function popularSection() {
     return `<div class="artist pop" data-nav tabindex="0" role="button" data-artist="${esc(a.name)}" aria-label="Cari lagu ${esc(a.name)}">${avatar(a)}<b>${esc(a.name)}</b>
       <button class="fol${f ? ' on' : ''}" data-followart="${esc(a.name)}" tabindex="-1" aria-label="${f ? 'Berhenti mengikuti' : 'Ikuti'} ${esc(a.name)}">${f ? 'Difollow' : '+ Follow'}</button></div>`;
   });
-  return `<section class="sec"><div class="sec-head"><h2>Artis Populer</h2></div>${hscroll(cards)}</section>`;
+  return `<section class="sec"><div class="sec-head"><h2>Artis Populer<small class="sub">Dari tangga lagu minggu ini</small></h2></div>${hscroll(cards)}</section>`;
 }
 
 function quickTile(attrs, ico, g, title, sub) {
@@ -178,11 +179,12 @@ function chartsBlock() {
   const key = state.chartTab === 'GLOBAL' ? 'GLOBAL' : 'ID';
   const items = state.charts[key];
   let inner;
-  if (items && items.length) inner = hscroll(items.slice(0, 12).map((t, i) => cardHTML(t, i, 'chart' + key, true)));
+  if (items && items.length) inner = '<div class="tracks top5">' + items.slice(0, 5).map((t, i) => rowHTML(t, i, 'chart' + key, true)).join('') + '</div>'
+    + hscroll(items.slice(5, 15).map((t, i) => cardHTML(t, i + 5, 'chart' + key, true)));
   else if (state.charts.err[key]) inner = empty(esc(state.charts.err[key]));
   else inner = hscroll(Array(6).fill('<div class="card sk"><div class="cover"></div></div>'));
   const seg = (k, label) => `<button class="seg${k === key ? ' on' : ''}" data-nav data-charttab="${k}" aria-pressed="${k === key}">${label}</button>`;
-  return `<section class="sec"><div class="sec-head"><h2>Tangga Lagu</h2>${items && items.length ? `<button class="link" data-nav data-open="chart${key}">Lihat semua</button>` : ''}</div>
+  return `<section class="sec"><div class="sec-head"><h2>Tangga Lagu<small class="sub">Musik terpopuler saat ini</small></h2>${items && items.length ? `<button class="link" data-nav data-open="chart${key}">Lihat semua</button>` : ''}</div>
     <div class="segs">${seg('ID', 'Indonesia')}${seg('GLOBAL', 'Global')}</div>${inner}</section>`;
 }
 
@@ -212,14 +214,16 @@ function homeHTML() {
     + quickTile('data-open="chartGLOBAL"', ICON.list, false, 'Top Global', 'Lagi hits')
     + `</div>`;
 
-  // 3. terakhir diputar, hanya jika ada
-  if (state.recent.length) out += section('Putar lagi', hscroll(state.recent.slice(0, 12).map((t, i) => cardHTML(t, i, 'recent'))), 'recent');
+  // 3. lagi ramai: tangga lagu di atas supaya beranda langsung terasa hidup
+  out += zone('Jelajahi', 'Lagi ramai') + chartsBlock();
 
-  // 4. artis
-  out += artistsSection();
-  out += popularSection();
+  // 4. untukmu: riwayat dan lagu yang disukai
+  if (state.recent.length || state.fav.length) out += zone('Untukmu', 'Lanjut dengerin');
+  if (state.recent.length) out += section('Putar lagi', hscroll(state.recent.slice(0, 12).map((t, i) => cardHTML(t, i, 'recent'))), 'recent', 'Terakhir kamu putar');
+  if (state.fav.length) out += section('Liked Songs', hscroll(state.fav.slice(0, 12).map((t, i) => cardHTML(t, i, 'liked'))), 'liked', state.fav.length + ' lagu favoritmu');
 
-  // 5. playlist, selalu ada kartu "Playlist baru"
+  // 5. koleksi
+  out += zone('Koleksi', 'Punyamu');
   const plCards = state.playlists.map((p) => {
     const first = p.tracks[0];
     return `<div class="card pl" data-nav tabindex="0" role="button" data-pl="${p.id}" aria-label="Buka playlist ${esc(p.name)}">
@@ -227,13 +231,10 @@ function homeHTML() {
       <b>${esc(p.name)}</b><small>Playlist</small></div>`;
   });
   plCards.unshift(`<div class="card new" data-nav tabindex="0" role="button" data-newpl aria-label="Bikin playlist baru"><div class="cover">${ICON.plus}</div><b>Playlist baru</b><small>Bikin sendiri</small></div>`);
-  out += section('Playlist Kamu', hscroll(plCards));
+  out += section('Playlist Kamu', hscroll(plCards), '', state.playlists.length ? state.playlists.length + ' playlist' : 'Bikin yang pertama'); 
 
-  // 6. liked songs, hanya jika ada (tile di atas sudah jadi pintu masuk saat kosong)
-  if (state.fav.length) out += section('Liked Songs', hscroll(state.fav.slice(0, 12).map((t, i) => cardHTML(t, i, 'liked'))), 'liked');
-
-  // 7. tangga lagu: satu bagian dengan pilihan Indonesia / Global
-  out += chartsBlock();
+  // 6. artis
+  out += zone('Kenalan', 'Artis') + artistsSection() + popularSection();
   return out + '</div>';
 }
 

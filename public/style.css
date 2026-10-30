@@ -678,3 +678,11 @@ html.is-playing .play-btn { animation: playGlow 2.6s ease-in-out infinite; }
 .story-len button { padding: .3125rem .75rem; border-radius: 1rem; font-size: .8125rem; font-weight: 600; color: var(--muted); outline: none; transition: background .15s, color .15s; }
 .story-len button[aria-pressed="true"] { background: #fff; color: #0e0e13; }
 .story-len button:focus-visible { outline: .125rem solid var(--accent); outline-offset: .125rem; }
+
+/* ---- Beranda: zona & subjudul ---- */
+.zone{margin:30px 8px -2px;padding-top:18px;border-top:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:2px}
+.zone small{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent,#1ed7a0);opacity:.9}
+.zone h2{font-size:24px;letter-spacing:-.02em;margin:0}
+.sec-head h2{display:flex;flex-direction:column;gap:1px}
+.sec-head h2 .sub{font-size:12px;font-weight:500;color:var(--muted,#9aa0a6);letter-spacing:0}
+.top5{margin-bottom:12px}
