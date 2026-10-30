@@ -222,7 +222,8 @@ function homeHTML() {
   const h = new Date().getHours();
   const greet = h < 11 ? 'Pagi, yuk gas!' : h < 15 ? 'Siang, lagi ngapain?' : h < 18 ? 'Sore, waktunya santai' : 'Malam, mau muter apa?';
   const fresh = !state.resume && !state.recent.length && !state.fav.length && !state.artists.length;
-  let out = `<div class="home"><h2 class="greet">${greet}</h2>`;
+  const dateLbl = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
+  let out = `<div class="home"><div class="greet-wrap"><small>${dateLbl}</small><h2 class="greet">${greet}</h2></div>`;
 
   // 1. lanjutkan, hal paling sering dibutuhkan
   if (state.resume && state.resume.track) {
@@ -490,6 +491,24 @@ new MutationObserver(navSync).observe($('#menu'), { attributes: true, attributeF
   window.addEventListener('touchend', (e) => {
     if (!g) return; const t = e.changedTouches[0], dx = t.clientX - g.x, dy = Math.abs(t.clientY - g.y); g = null;
     if (dx > 70 && dy < 60) { if (!$('#menu').hidden) closeMenu(); else if (state.view) closeView(); }
+  }, { passive: true });
+})();
+
+/* header: baris logo menyusut saat gulir ke bawah, muncul lagi saat gulir ke atas; kolom cari tetap */
+(function () {
+  const top = document.querySelector('header.top'), list = $('#list'); let last = 0, tick = false;
+  list.addEventListener('scroll', () => {
+    if (tick) return; tick = true;
+    requestAnimationFrame(() => {
+      tick = false;
+      const y = list.scrollTop, d = y - last;
+      if (document.documentElement.dataset.layout === 'phone') {
+        if (y < 24 || d < -6) top.classList.remove('compact');
+        else if (d > 6 && y > 90) top.classList.add('compact');
+      } else top.classList.remove('compact');
+      top.classList.toggle('lifted', y > 4);
+      last = y;
+    });
   }, { passive: true });
 })();
 

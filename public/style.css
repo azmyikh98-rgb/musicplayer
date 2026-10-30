@@ -722,3 +722,35 @@ html[data-layout=tablet] .genres,html[data-layout=desktop] .genres,html.tv .genr
 .res-act{display:inline-flex;gap:6px;flex:none}
 .pill.sm{padding:.35rem .75rem;font-size:.75rem}
 .pill.sm svg{width:.9rem;height:.9rem}
+
+/* ================= Polesan v3: header, tab bar, beranda ================= */
+.top{padding:calc(.625rem + var(--safe-t)) 1rem .5rem;background:linear-gradient(var(--bg) 82%,transparent);transition:box-shadow .25s}
+.top.lifted{box-shadow:0 .75rem 1.25rem -.75rem rgba(0,0,0,.7)}
+.top h1{display:flex;align-items:center;gap:.5rem;margin:0 0 .5rem;max-height:2.5rem;overflow:hidden;opacity:1;transition:max-height .28s var(--ease),margin .28s var(--ease),opacity .2s}
+html[data-layout=phone] .top.compact h1{max-height:0;margin-bottom:0;opacity:0}
+.top .logo svg{width:1.75rem;height:1.75rem;display:block}
+.top .wm{font-size:1.375rem;font-weight:800;letter-spacing:-.03em;background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+.qwrap #q,#q{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);transition:border-color .2s,box-shadow .2s,background .2s}
+#q:focus{background:rgba(255,255,255,.09);box-shadow:0 0 0 3px rgba(255,79,109,.18)}
+.chip{background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.08);transition:background .2s,border-color .2s,color .2s}
+.chip:active{transform:scale(.95)}
+
+/* tab bar: pil aktif yang jelas, label lebih terbaca */
+html[data-layout=phone] .tabs{padding-top:.25rem}
+html[data-layout=phone] .tabs button{margin:.1875rem .375rem;gap:.1875rem;font-size:.6875rem;font-weight:600;letter-spacing:.01em}
+html[data-layout=phone] .tabs button.on{background:rgba(255,79,109,.14);color:#fff}
+html[data-layout=phone] .tabs button.on::before{display:none}
+html[data-layout=phone] .tabs button.on svg{transform:none;stroke:var(--accent)}
+html[data-layout=phone] .tabs button svg{width:1.4rem;height:1.4rem}
+
+/* beranda: sapaan dengan tanggal */
+.greet-wrap{margin:.5rem .5rem 1rem;display:flex;flex-direction:column;gap:.125rem}
+.greet-wrap small{font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.greet-wrap .greet{margin:0;font-size:1.75rem;font-weight:800;letter-spacing:-.03em;line-height:1.15}
+.qt{border:1px solid rgba(255,255,255,.05);transition:transform .15s var(--ease),background .2s}
+.qt:active{transform:scale(.97)}
+.continue{border:1px solid rgba(255,255,255,.06);box-shadow:0 .5rem 1.5rem -.75rem rgba(255,79,109,.45)}
+.sec{margin-top:1.5rem}
+.sec-head{margin-bottom:.625rem}
+.top h1{background:none;color:inherit;width:auto}
+.qwrap .qi{z-index:2;pointer-events:none}.qwrap .qclear{z-index:2}
