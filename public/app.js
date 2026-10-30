@@ -998,7 +998,7 @@ setInterval(() => {
 
 /* ---------- Lirik ---------- */
 const lyrCache = new Map();
-let lyrUser = 0, lyrReq = 0;
+let lyrUser = 0, lyrReq = 0, lyrTap = false;
 const lyrOffs = store.get('lyrOffs', {});   // geser waktu lirik per lagu (detik)
 const lyrOff = () => (current() && lyrOffs[current().id]) || 0;
 
@@ -1022,14 +1022,25 @@ function renderLyrics() {
   if (L.status === 'loading') { el.innerHTML = '<div class="ly-sk" style="width:80%"></div><div class="ly-sk" style="width:60%"></div><div class="ly-sk" style="width:72%"></div><div class="ly-sk" style="width:50%"></div>'; return; }
   if (L.status === 'instrumental') { el.innerHTML = '<p class="ly-msg">Lagu instrumental, tidak ada lirik.</p>'; return; }
   if (L.status !== 'ok') {
-    el.innerHTML = `<p class="ly-msg">${L.status === 'err' ? 'Liriknya lagi nggak bisa dimuat.' : 'Lirik lagu ini belum ada nih.'}<br><a href="${lyrSearchLink(t)}" target="_blank" rel="noopener">Cari di Google</a></p>`;
+    el.innerHTML = `<p class="ly-msg">${L.status === 'err' ? 'Liriknya lagi nggak bisa dimuat.' : 'Lirik lagu ini belum ada nih.'}<br>${L.status === 'err' || L.status === 'none' ? '<button type="button" class="ly-retry" data-lyretry>Coba lagi</button> ' : ''}<a href="${lyrSearchLink(t)}" target="_blank" rel="noopener">Cari di Google</a></p>`;
     return;
   }
-  const off = lyrOff();
-  const sync = L.synced.length ? `<span class="ly-off"><button type="button" data-lyoff="-0.5" aria-label="Lirik lebih cepat">−0,5s</button>${off ? `<em>${off > 0 ? '+' : ''}${String(off).replace('.', ',')}s</em>` : ''}<button type="button" data-lyoff="0.5" aria-label="Lirik lebih lambat">+0,5s</button></span>` : '';
-  const src = `<div class="ly-src"><span>Lirik dari ${esc(L.src || 'LRCLIB')}</span>${sync}</div>`;
+  const off = lyrOff(), vdur = ytReady && yt.getDuration ? Math.round(yt.getDuration() || 0) : 0;
+  const fmtOff = (v) => (v > 0 ? '+' : '') + String(v).replace('.', ',') + ' dtk';
+  let bar = '';
   if (L.synced.length) {
-    el.innerHTML = L.synced.map((l, i) => `<p data-ly="${i}" data-t="${l[0]}"${l[1] ? '' : ' class="gap"'}>${l[1] ? esc(l[1]) : '♪'}</p>`).join('') + src;
+    const d = L.lrcDur && vdur ? vdur - L.lrcDur : 0;
+    const hint = !off && Math.abs(d) >= 2 && d > 0 && d <= 45
+      ? `<button type="button" class="ly-auto" data-lyauto="${d}">Video ini ${d} dtk lebih panjang dari lagunya. Sesuaikan otomatis?</button>`
+      : (L.mismatch ? '<span class="ly-warn">Versi lirik mungkin beda dengan video ini. Kalau meleset, sinkronkan manual.</span>' : '');
+    bar = `<div class="ly-bar">${hint}<div class="ly-ctl"><span class="ly-lbl">Sinkron${off ? ' <em>' + fmtOff(off) + '</em>' : ''}</span>`
+      + `<button type="button" data-lyoff="-0.5" aria-label="Lirik lebih cepat">−0,5</button><button type="button" data-lyoff="0.5" aria-label="Lirik lebih lambat">+0,5</button>`
+      + `<button type="button" class="${lyrTap ? 'on' : ''}" data-lytap>${lyrTap ? 'Tap baris yang lagi dinyanyiin…' : 'Tap buat sinkron'}</button>`
+      + `${off ? '<button type="button" data-lyreset>Reset</button>' : ''}</div></div>`;
+  }
+  const src = `<div class="ly-src"><span>Lirik dari ${esc(L.src || 'LRCLIB')}</span></div>`;
+  if (L.synced.length) {
+    el.innerHTML = bar + L.synced.map((l, i) => `<p data-ly="${i}" data-t="${l[0]}"${l[1] ? '' : ' class="gap"'}>${l[1] ? esc(l[1]) : '♪'}</p>`).join('') + src;
   } else {
     el.innerHTML = L.plain.split(/\r?\n/).map((l) => (l.trim() ? `<p>${esc(l)}</p>` : '<p class="gap"></p>')).join('') + src;
   }
@@ -1044,18 +1055,25 @@ async function ensureLyrics() {
   const my = ++lyrReq;
   state.lyr = { id: t.id, status: 'loading', synced: [], plain: '', src: '', active: -1 };
   renderLyrics(); { $('#stage').scrollTop = 0; $('#lyrics').scrollTop = 0; }
-  const dur = ytReady && yt.getDuration ? Math.round(yt.getDuration() || 0) : 0;
+  // durasi video dibutuhkan untuk memilih versi lirik yang tepat; tunggu sampai pemutar melaporkannya
+  let dur = 0;
+  for (let i = 0; i < 16 && my === lyrReq; i++) {
+    dur = ytReady && yt.getDuration ? Math.round(yt.getDuration() || 0) : 0;
+    if (dur > 0) break;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  if (my !== lyrReq) return;
   try {
     const r = await fetch(`/api/lyrics?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}${dur ? '&dur=' + dur : ''}`);
-    const d = await r.json();
+    const d = await r.json().catch(() => ({}));
     if (my !== lyrReq) return;
     if (!r.ok) throw new Error(d.error || 'gagal');
     let v;
     if (!d.found) v = { status: 'none', synced: [], plain: '', src: '' };
     else if (d.instrumental) v = { status: 'instrumental', synced: [], plain: '', src: '' };
-    else if ((d.synced && d.synced.length) || (d.plain && d.plain.trim())) v = { status: 'ok', synced: d.synced || [], plain: d.plain || '', src: d.source || 'LRCLIB' };
+    else if ((d.synced && d.synced.length) || (d.plain && d.plain.trim())) v = { status: 'ok', synced: d.synced || [], plain: d.plain || '', src: d.source || 'LRCLIB', lrcDur: d.lrcDur || 0, mismatch: !!d.mismatch };
     else v = { status: 'none', synced: [], plain: '', src: '' };
-    lyrCache.set(t.id, v);
+    if (v.status === 'ok') lyrCache.set(t.id, v);
     state.lyr = { id: t.id, ...v, active: -1 };
   } catch {
     if (my !== lyrReq) return;
@@ -1081,11 +1099,13 @@ function lyricsTick(cur) {
   if (Date.now() - lyrUser > 4000) sc.scrollTo({ top: Math.max(0, (own ? 0 : el.offsetTop) + p.offsetTop - sc.clientHeight / 2 + p.offsetHeight / 2), behavior: 'smooth' });
 }
 
+/* lirik dicek lebih sering supaya sorotan tidak telat */
+setInterval(() => { if (state.pview === 'lyrics' && ytReady && current() && typeof yt.getCurrentTime === 'function') lyricsTick(yt.getCurrentTime() || 0); }, 150);
+
 /* progres */
 setInterval(() => {
   if (!ytReady || !current() || typeof yt.getCurrentTime !== 'function') return;
   const cur = yt.getCurrentTime() || 0, dur = yt.getDuration() || 0;
-  lyricsTick(cur);
   if (!dur) return;
   const p = (cur / dur) * 100;
   $('#miniBar').style.width = p + '%';
@@ -1225,7 +1245,18 @@ $('#lyrics').addEventListener('click', (e) => {
     const keys = Object.keys(lyrOffs); if (keys.length > 60) delete lyrOffs[keys[0]];
     store.set('lyrOffs', lyrOffs); const top = $('#stage').scrollTop, top2 = $('#lyrics').scrollTop; renderLyrics(); $('#stage').scrollTop = top; $('#lyrics').scrollTop = top2; state.lyr.active = -1; return;
   }
+  const setOff = (v) => {
+    const id = current().id; v = Math.round(v * 10) / 10;
+    if (v) lyrOffs[id] = v; else delete lyrOffs[id];
+    const keys = Object.keys(lyrOffs); if (keys.length > 60) delete lyrOffs[keys[0]];
+    store.set('lyrOffs', lyrOffs); const t1 = $('#stage').scrollTop, t2 = $('#lyrics').scrollTop; lyrTap = false; renderLyrics(); $('#stage').scrollTop = t1; $('#lyrics').scrollTop = t2;
+  };
+  if (e.target.closest('[data-lyretry]')) { state.lyr.status = 'idle'; lyrCache.delete(current().id); ensureLyrics(); return; }
+  if (current() && e.target.closest('[data-lyauto]')) { setOff(parseFloat(e.target.closest('[data-lyauto]').dataset.lyauto)); toast('Lirik udah disesuaiin'); return; }
+  if (current() && e.target.closest('[data-lyreset]')) { setOff(0); return; }
+  if (e.target.closest('[data-lytap]')) { lyrTap = !lyrTap; const t1 = $('#lyrics').scrollTop; renderLyrics(); $('#lyrics').scrollTop = t1; return; }
   const p = e.target.closest('[data-t]'); if (!p || !ytReady) return;
+  if (lyrTap && current()) { setOff((yt.getCurrentTime() || 0) - parseFloat(p.dataset.t)); toast('Sinkron! Lirik udah pas'); return; }
   lyrUser = 0; yt.seekTo(parseFloat(p.dataset.t), true);
 });
 ['wheel', 'touchmove'].forEach((ev) => $('#stage').addEventListener(ev, () => { lyrUser = Date.now(); }, { passive: true }));

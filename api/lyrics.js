@@ -45,44 +45,68 @@ async function lr(path, params) {
   return r.json();
 }
 
-// pilih hasil terbaik: utamakan yang punya lirik bertanda waktu dan durasinya paling dekat
-function pick(list, dur) {
-  const ok = (Array.isArray(list) ? list : [list]).filter((x) => x && (x.syncedLyrics || x.plainLyrics || x.instrumental));
-  if (!ok.length) return null;
-  const score = (x) => (x.syncedLyrics ? 0 : 1000) + (dur && x.duration ? Math.abs(x.duration - dur) : 30);
-  return ok.sort((a, b) => score(a) - score(b))[0];
+// Nilai kandidat: makin kecil makin bagus. Durasi yang jauh berbeda biasanya versi lain (remix, live, intro panjang).
+function rate(x, dur) {
+  if (!x || !(x.syncedLyrics || x.plainLyrics || x.instrumental)) return null;
+  const diff = dur && x.duration ? Math.abs(x.duration - dur) : null;
+  const tol = dur ? Math.max(12, dur * 0.1) : 1e9;
+  const bad = diff != null && diff > tol;
+  return { x, diff, bad, score: (bad ? 5000 : 0) + (x.syncedLyrics ? 0 : 200) + (diff == null ? 40 : diff) };
+}
+const best = (list, dur) => (Array.isArray(list) ? list : [list]).map((x) => rate(x, dur)).filter(Boolean).sort((a, b) => a.score - b.score)[0] || null;
+
+// variasi judul/artis: judul YouTube sering berformat "Artis - Judul", dan nama kanal bisa berupa label
+function variants(rawTitle, title, artist) {
+  const v = [[title, artist]];
+  const m = String(rawTitle).replace(/\s*[\(\[【][^\)\]】]*[\)\]】]/g, '').split(/\s+[-–—]\s+/);
+  if (m.length >= 2) {
+    const l = m[0].trim(), r = m.slice(1).join(' - ').replace(/\s+(feat\.?|ft\.?)\s+.*$/i, '').trim();
+    if (l && r) { v.push([r, l]); v.push([l, r]); v.push([r, artist]); }
+  }
+  const noParen = String(title).replace(/\s*[\(\[][^\)\]]*[\)\]]/g, '').trim();
+  if (noParen && noParen !== title) v.push([noParen, artist]);
+  v.push([title, '']);
+  const seen = new Set();
+  return v.filter(([t, a]) => { const k = (t + '|' + a).toLowerCase(); if (!t || seen.has(k)) return false; seen.add(k); return true; }).slice(0, 6);
 }
 
-async function find(title, artist, dur) {
-  if (artist && dur) {
-    try { const g = await lr('get', { track_name: title, artist_name: artist, duration: String(dur) }); const p = pick(g, dur); if (p) return p; } catch {}
+async function find(rawTitle, title, artist, dur) {
+  let top = null, ok = 0, fail = 0;
+  const take = (r) => { if (r && (!top || r.score < top.score)) top = r; return top && !top.bad && top.x.syncedLyrics && (top.diff == null || top.diff <= 3); };
+  for (const [t, a] of variants(rawTitle, title, artist)) {
+    if (a && dur) { try { const g = await lr('get', { track_name: t, artist_name: a, duration: String(dur) }); ok++; if (take(best(g, dur))) return top; } catch { fail++; } }
+    const qs = [];
+    if (a) qs.push({ track_name: t, artist_name: a });
+    qs.push({ q: `${t} ${a}`.trim() });
+    for (const q of qs) {
+      let list = null;
+      try { list = await lr('search', q); ok++; } catch { fail++; continue; }
+      if (take(best((list || []).slice(0, 20), dur))) return top;
+    }
+    if (top && !top.bad && top.x.syncedLyrics) return top;   // sudah cukup baik, hemat waktu
   }
-  const tries = [];
-  if (artist) tries.push({ track_name: title, artist_name: artist });
-  tries.push({ q: `${title} ${artist}`.trim() });
-  tries.push({ track_name: title });
-  for (const q of tries) {
-    const list = await lr('search', q);
-    const p = pick((list || []).slice(0, 15), dur);
-    if (p) return p;
-  }
-  return null;
+  if (!top && fail && !ok) throw new Error('lrclib down');
+  return top;
 }
 
 module.exports = async (req, res) => {
   const artist = cleanArtist(String(req.query.artist || '')).slice(0, 80);
-  const title = cleanTitle(String(req.query.title || '').slice(0, 160), artist);
+  const rawTitle = String(req.query.title || '').slice(0, 160);
+  const title = cleanTitle(rawTitle, artist);
   const dur = Math.round(Number(req.query.dur) || 0);
   if (!title) return res.status(400).json({ error: 'Judul kosong.' });
   try {
-    const hit = await find(title, artist, dur);
-    res.setHeader('Cache-Control', 's-maxage=604800, stale-while-revalidate=86400');
+    const top = await find(rawTitle, title, artist, dur);
+    const hit = top && top.x;
+    // hasil ketemu boleh di-cache lama; "belum ada" cukup sebentar supaya lirik baru cepat terpakai
+    res.setHeader('Cache-Control', hit ? 's-maxage=604800, stale-while-revalidate=86400' : 's-maxage=1800');
     if (!hit) return res.status(200).json({ found: false });
     if (hit.instrumental && !hit.syncedLyrics && !hit.plainLyrics) return res.status(200).json({ found: true, instrumental: true });
     const synced = hit.syncedLyrics ? parseLRC(hit.syncedLyrics) : [];
     return res.status(200).json({
       found: true, synced: synced.length >= 3 ? synced : [], plain: hit.plainLyrics || '',
       title: hit.trackName || title, artist: hit.artistName || artist, source: 'LRCLIB',
+      lrcDur: hit.duration || 0, mismatch: !!top.bad,
     });
   } catch (e) {
     res.setHeader('Cache-Control', 'no-store');

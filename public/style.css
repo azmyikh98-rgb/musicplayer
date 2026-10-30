@@ -694,3 +694,14 @@ html.is-playing .play-btn { animation: playGlow 2.6s ease-in-out infinite; }
 .gtile:active{transform:scale(.97)}
 .gtile:focus-visible{outline:2px solid #fff;outline-offset:2px}
 html[data-layout=tablet] .genres,html[data-layout=desktop] .genres,html.tv .genres{grid-template-columns:repeat(4,1fr)}
+
+/* ---- Lirik: bar sinkron di atas ---- */
+.lyrics .ly-bar{position:sticky;top:0;z-index:2;display:flex;flex-direction:column;gap:6px;padding:8px 0 10px;margin-bottom:6px;background:linear-gradient(var(--bg,#0b0b10) 70%,transparent);cursor:default}
+.ly-ctl{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:.6875rem}
+.ly-ctl .ly-lbl{color:rgba(255,255,255,.55);font-weight:600;margin-right:2px}
+.ly-ctl .ly-lbl em{font-style:normal;color:var(--accent)}
+.ly-ctl button,.ly-retry{padding:.3rem .65rem;border-radius:999px;background:rgba(255,255,255,.1);color:var(--text);font-size:.6875rem;font-weight:700}
+.ly-ctl button.on{background:var(--accent);color:#fff}
+.ly-auto{text-align:left;padding:.5rem .75rem;border-radius:12px;background:rgba(255,255,255,.08);color:var(--text);font-size:.75rem;font-weight:600;border:1px solid var(--accent)}
+.ly-warn{font-size:.6875rem;color:rgba(255,255,255,.55)}
+.ly-retry{margin-top:.5rem}
