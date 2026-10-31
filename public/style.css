@@ -957,10 +957,8 @@ input[type=range]::-webkit-slider-thumb{width:1.125rem;height:1.125rem;margin-to
 .play-btn:active{transform:scale(.95)}
 .extras{margin:.625rem 0 0}
 
-/* Mode Lirik: hanya lirik. Video tetap dimuat tapi tersembunyi di belakang (suara tetap jalan). */
-.sheet[data-pview="lyrics"] .video,
-html[data-layout="desktop"] .sheet[data-pview="lyrics"] .video,
-html.tv .sheet[data-pview="lyrics"] .video{position:fixed;left:0;top:0;width:200px;height:200px;min-height:0;aspect-ratio:auto;margin:0;border-radius:0;box-shadow:none;opacity:.02;pointer-events:none;z-index:-1}
+/* Mode Lirik: video tetap tampil di atas, lirik di bawahnya. */
+.sheet[data-pview="lyrics"] .video{margin:.5rem 0 .25rem;min-height:0}
 .sheet[data-pview="lyrics"] .stage{position:relative;flex:1 1 0;margin:.5rem -.25rem 0;padding:0 .25rem;
   -webkit-mask-image:linear-gradient(transparent 0,#000 7%,#000 86%,transparent 100%);mask-image:linear-gradient(transparent 0,#000 7%,#000 86%,transparent 100%)}
 .sheet[data-pview="lyrics"] .lyrics{padding:1.25rem .25rem 45vh}
