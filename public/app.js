@@ -1228,6 +1228,49 @@ function renderLyrics() {
   L.active = -1;
 }
 
+
+/* Cadangan di sisi browser: kalau server Vercel tidak bisa menjangkau LRCLIB (IP datacenter kadang diblokir/lambat),
+   HP langsung bertanya ke LRCLIB (mendukung CORS) lalu ke lyrics.ovh. */
+function lrcParse(lrc) {
+  const out = [];
+  for (const line of String(lrc || '').split(/\r?\n/)) {
+    const st = [...line.matchAll(/\[(\d{1,3}):(\d{2})(?:[.:](\d{1,3}))?\]/g)];
+    if (!st.length) continue;
+    const text = line.replace(/\[[^\]]*\]/g, '').trim();
+    for (const m of st) out.push([Math.round((+m[1] * 60 + +m[2] + (m[3] ? +('0.' + m[3]) : 0)) * 100) / 100, text]);
+  }
+  return out.sort((x, y) => x[0] - y[0]);
+}
+async function directLyrics(rawTitle, rawArtist, dur, isCurrent) {
+  const artist = String(rawArtist || '').replace(/\s*-\s*Topic$/i, '').replace(/\s*VEVO$/i, '').trim();
+  let title = String(rawTitle || '').replace(/\s*[\(\[【][^\)\]】]*[\)\]】]/g, '').replace(/\s*\|.*$/, '').trim();
+  const v = [];
+  const parts = title.split(/\s+[-–—]\s+/);
+  if (parts.length >= 2) { const l = parts[0].trim(), r = parts.slice(1).join(' - ').replace(/\s+(feat\.?|ft\.?)\s+.*$/i, '').trim(); v.push([r, l], [r, artist]); }
+  title = title.replace(/\s+(feat\.?|ft\.?)\s+.*$/i, '').trim();
+  v.unshift([title, artist]);
+  const seen = new Set(), vs = v.filter(([t, a]) => { const k = (t + '|' + a).toLowerCase(); if (!t || seen.has(k)) return false; seen.add(k); return true; }).slice(0, 3);
+  const get = async (u, ms = 7000) => { const c = new AbortController(), to = setTimeout(() => c.abort(), ms); try { const r = await fetch(u, { signal: c.signal }); return r.ok ? await r.json() : null; } finally { clearTimeout(to); } };
+  const tol = dur ? Math.max(12, dur * 0.1) : 1e9;
+  const score = (x) => { if (!x || !(x.syncedLyrics || x.plainLyrics)) return null; const diff = dur && x.duration ? Math.abs(x.duration - dur) : null; return (diff != null && diff > tol ? 5000 : 0) + (x.syncedLyrics ? 0 : 200) + (diff == null ? 40 : diff); };
+  let top = null, topS = 1e9, reached = false;
+  await Promise.all(vs.flatMap(([t, a]) => [
+    a ? `https://lrclib.net/api/search?track_name=${encodeURIComponent(t)}&artist_name=${encodeURIComponent(a)}` : null,
+    `https://lrclib.net/api/search?q=${encodeURIComponent((t + ' ' + a).trim())}`,
+  ].filter(Boolean).map(async (u) => {
+    try { const list = await get(u); if (Array.isArray(list)) { reached = true; for (const x of list.slice(0, 20)) { const s = score(x); if (s != null && s < topS) { top = x; topS = s; } } } } catch {}
+  })));
+  if (top) {
+    const synced = top.syncedLyrics ? lrcParse(top.syncedLyrics) : [];
+    return { found: true, synced: synced.length >= 3 ? synced : [], plain: top.plainLyrics || '', source: 'LRCLIB', lrcDur: top.duration || 0, mismatch: topS >= 5000 };
+  }
+  const fa = vs.find(([, a]) => a);
+  if (fa) {
+    try { const d = await get(`https://api.lyrics.ovh/v1/${encodeURIComponent(fa[1])}/${encodeURIComponent(fa[0])}`, 7000); const tx = d && d.lyrics ? String(d.lyrics).replace(/\r/g, '').trim() : ''; if (tx.length > 40) return { found: true, synced: [], plain: tx, source: 'lyrics.ovh' }; } catch {}
+  }
+  return reached ? { found: false } : null;
+}
+
 async function ensureLyrics() {
   const t = current(); if (!t) { renderLyrics(); return; }
   if (state.lyr.id === t.id && state.lyr.status !== 'idle' && state.lyr.status !== 'err') { return; }
@@ -1246,16 +1289,23 @@ async function ensureLyrics() {
   if (my !== lyrReq) return;
   // coba sampai 3 kali (jaringan HP / layanan lirik kadang lambat), dengan batas waktu tiap percobaan
   const url = `/api/lyrics?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}${dur ? '&dur=' + dur : ''}`;
-  let d = null, fail = false;
-  for (let attempt = 0; attempt < 3 && !d; attempt++) {
-    if (attempt) await new Promise((r) => setTimeout(r, attempt * 1200));
+  let d = null, fail = false, direct = false;
+  // 1) lewat server kita; 2) kalau gagal / tidak ketemu, langsung dari HP; 3) coba server sekali lagi
+  for (let attempt = 0; attempt < 2 && !d; attempt++) {
     if (my !== lyrReq) return;
     try {
-      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 14000);
+      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 12000);
       const r = await fetch(url, { signal: ctl.signal }); clearTimeout(to);
       const j = await r.json().catch(() => null);
       if (r.ok && j) d = j; else if (r.status === 400) { fail = true; break; }
-    } catch { /* ulangi */ }
+    } catch { /* lanjut ke cadangan */ }
+    if (!d || !d.found) {
+      let dd = null;
+      try { dd = await directLyrics(t.title, t.artist, dur, () => my === lyrReq); } catch {}
+      if (my !== lyrReq) return;
+      if (dd && (dd.found || !d)) { d = dd; direct = true; }
+    }
+    if (!d && attempt === 0) await new Promise((r) => setTimeout(r, 1000));
   }
   if (my !== lyrReq) return;
   if (!d) { state.lyr = { id: t.id, status: 'err', synced: [], plain: '', src: '', active: -1 }; renderLyrics(); return; }

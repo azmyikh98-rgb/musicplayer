@@ -113,7 +113,25 @@ async function find(rawTitle, title, artist, dur) {
   return top;
 }
 
+// /api/lyrics?debug=1 : cek langsung apakah server Vercel bisa menjangkau sumber lirik (untuk diagnosa)
+async function diag(res) {
+  const out = {};
+  const probe = async (name, url) => {
+    const t0 = Date.now();
+    try { const r = await fetch(url, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(6000) }); out[name] = { status: r.status, ms: Date.now() - t0 }; }
+    catch (e) { out[name] = { error: String(e && (e.cause && (e.cause.code || e.cause.message) || e.message || e)), ms: Date.now() - t0 }; }
+  };
+  await Promise.all([
+    probe('lrclib', BASE + '/search?q=' + encodeURIComponent('bandung fiersa besari')),
+    probe('lyrics.ovh', 'https://api.lyrics.ovh/v1/' + encodeURIComponent('Fiersa Besari') + '/Bandung'),
+  ]);
+  out.node = process.version;
+  res.setHeader('Cache-Control', 'no-store');
+  return res.status(200).json(out);
+}
+
 module.exports = async (req, res) => {
+  if (req.query.debug) return diag(res);
   const artist = cleanArtist(String(req.query.artist || '')).slice(0, 80);
   const rawTitle = String(req.query.title || '').slice(0, 160);
   const title = cleanTitle(rawTitle, artist);
