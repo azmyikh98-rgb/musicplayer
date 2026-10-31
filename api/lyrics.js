@@ -38,11 +38,22 @@ function parseLRC(lrc = '') {
   return out.sort((a, b) => a[0] - b[0]);
 }
 
-async function lr(path, params) {
-  const r = await fetch(`${BASE}/${path}?${new URLSearchParams(params)}`, { headers: { 'User-Agent': UA } });
+const REQ_MS = 4000;      // batas tiap permintaan ke LRCLIB
+const BUDGET_MS = 8500;   // batas total pencarian (fungsi Vercel gratis terbatas ~10 detik)
+async function lr(path, params, ms = REQ_MS) {
+  const r = await fetch(`${BASE}/${path}?${new URLSearchParams(params)}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(ms) });
   if (r.status === 404) return null;
   if (!r.ok) throw new Error('lrclib ' + r.status);
   return r.json();
+}
+
+// cadangan terakhir: lyrics.ovh (hanya lirik biasa, tanpa waktu)
+async function ovh(artist, title, ms = 4000) {
+  const r = await fetch(`https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(ms) });
+  if (!r.ok) return null;
+  const d = await r.json().catch(() => null);
+  const text = d && typeof d.lyrics === 'string' ? d.lyrics.replace(/\r/g, '').trim() : '';
+  return text.length > 40 ? { plainLyrics: text, trackName: title, artistName: artist, duration: 0, _src: 'lyrics.ovh' } : null;
 }
 
 // Nilai kandidat: makin kecil makin bagus. Durasi yang jauh berbeda biasanya versi lain (remix, live, intro panjang).
@@ -71,21 +82,34 @@ function variants(rawTitle, title, artist) {
 }
 
 async function find(rawTitle, title, artist, dur) {
+  const t0 = Date.now(), left = () => BUDGET_MS - (Date.now() - t0);
   let top = null, ok = 0, fail = 0;
-  const take = (r) => { if (r && (!top || r.score < top.score)) top = r; return top && !top.bad && top.x.syncedLyrics && (top.diff == null || top.diff <= 3); };
-  for (const [t, a] of variants(rawTitle, title, artist)) {
-    if (a && dur) { try { const g = await lr('get', { track_name: t, artist_name: a, duration: String(dur) }); ok++; if (take(best(g, dur))) return top; } catch { fail++; } }
-    const qs = [];
-    if (a) qs.push({ track_name: t, artist_name: a });
-    qs.push({ q: `${t} ${a}`.trim() });
-    for (const q of qs) {
-      let list = null;
-      try { list = await lr('search', q); ok++; } catch { fail++; continue; }
-      if (take(best((list || []).slice(0, 20), dur))) return top;
+  const take = (r) => { if (r && (!top || r.score < top.score)) top = r; };
+  const good = () => top && !top.bad && top.x.syncedLyrics && (top.diff == null || top.diff <= 3);
+  // jalankan banyak permintaan sekaligus; satu yang lambat/gagal tidak menahan yang lain
+  const run = async (jobs) => {
+    await Promise.all(jobs.map(async (job) => {
+      if (left() < 600) return;
+      try { const res = await job(Math.max(700, Math.min(REQ_MS, left() - 400))); ok++; if (res) take(best(Array.isArray(res) ? res.slice(0, 20) : res, dur)); } catch { fail++; }
+    }));
+  };
+  const vs = variants(rawTitle, title, artist);
+  const jobsFor = (list) => {
+    const jobs = [];
+    for (const [t, a] of list) {
+      if (a && dur) jobs.push((ms) => lr('get', { track_name: t, artist_name: a, duration: String(dur) }, ms));
+      if (a) jobs.push((ms) => lr('search', { track_name: t, artist_name: a }, ms));
+      jobs.push((ms) => lr('search', { q: `${t} ${a}`.trim() }, ms));
     }
-    if (top && !top.bad && top.x.syncedLyrics) return top;   // sudah cukup baik, hemat waktu
-  }
-  if (!top && fail && !ok) throw new Error('lrclib down');
+    return jobs;
+  };
+  // cadangan (lirik biasa) jalan bersamaan dari awal, dipakai hanya kalau LRCLIB tidak membuahkan hasil
+  const fbV = vs.find(([, a]) => a);
+  const fb = fbV ? ovh(fbV[1], fbV[0], 4000).catch(() => null) : Promise.resolve(null);
+  await run(jobsFor(vs.slice(0, 2)));                                 // tahap 1: tebakan terbaik
+  if (!good() && ok > 0 && left() > 1500) await run(jobsFor(vs.slice(2)));   // tahap 2: variasi lain (hanya kalau LRCLIB responsif)
+  if (!top) { const o = await fb; if (o) take(rate(o, 0)); }
+  if (!top && fail && !ok) throw new Error('lyrics sources down');
   return top;
 }
 
@@ -105,7 +129,7 @@ module.exports = async (req, res) => {
     const synced = hit.syncedLyrics ? parseLRC(hit.syncedLyrics) : [];
     return res.status(200).json({
       found: true, synced: synced.length >= 3 ? synced : [], plain: hit.plainLyrics || '',
-      title: hit.trackName || title, artist: hit.artistName || artist, source: 'LRCLIB',
+      title: hit.trackName || title, artist: hit.artistName || artist, source: hit._src || 'LRCLIB',
       lrcDur: hit.duration || 0, mismatch: !!top.bad,
     });
   } catch (e) {

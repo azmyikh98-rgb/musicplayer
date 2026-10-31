@@ -436,10 +436,22 @@ function renderUpnext() {
     `<div class="up" data-nav tabindex="0" role="button" data-upi="${i}" aria-label="Putar ${esc(q[i].title)}"><img src="${imgOf(q[i])}" alt="" loading="lazy"><span class="meta"><b>${esc(q[i].title)}</b><small>${esc(q[i].artist)}</small></span></div>`).join('');
 }
 
+/* mode acak: tentukan dulu lagu berikutnya supaya kartu "Berikutnya" akurat */
+let shufPick = { key: '', i: -1 };
+function shufNext() {
+  const n = state.queue.length; if (n < 2) return -1;
+  const key = state.queue.map((t) => t.id).join(',').length + ':' + n + ':' + state.idx + ':' + (state.queue[state.idx] || {}).id;
+  if (shufPick.key !== key || shufPick.i === state.idx || shufPick.i >= n) {
+    let r; do { r = Math.floor(Math.random() * n); } while (r === state.idx);
+    shufPick = { key, i: r };
+  }
+  return shufPick.i;
+}
 function renderPeek() {
-  const b = $('#nextPeek'), q = state.queue, n = q[state.idx + 1];
-  if (!n || state.shuffle) { b.hidden = true; return; }
-  b.hidden = false; b.dataset.upi = state.idx + 1;
+  const b = $('#nextPeek'), q = state.queue;
+  const ni = (state.shuffle && !(state.userQ > 0 && state.idx + 1 < q.length)) ? shufNext() : state.idx + 1, n = q[ni];
+  if (!n) { b.hidden = true; return; }
+  b.hidden = false; b.dataset.upi = ni;
   b.innerHTML = `<img src="${imgOf(n)}" alt=""><span><small>Berikutnya</small><b>${esc(n.title)}</b><i>${esc(n.artist)}</i></span>${ICON.next}`;
 }
 function renderPlayer() {
@@ -1122,7 +1134,7 @@ function next(auto = false) {
   if (auto && state.repeat === 'one') { yt.seekTo(0, true); yt.playVideo(); return; }
   if (state.userQ > 0 && state.idx + 1 < n) { state.idx++; state.userQ--; load(0); return; }
   if (state.shuffle && n > 1) {
-    let r; do { r = Math.floor(Math.random() * n); } while (r === state.idx);
+    const r = shufNext();
     state.idx = r;
   } else if (state.idx + 1 < n) state.idx++;
   else if (state.repeat === 'all' || !auto) state.idx = 0;
@@ -1158,6 +1170,15 @@ setInterval(() => {
 
 /* ---------- Lirik ---------- */
 const lyrCache = new Map();
+const lyrDisk = {   // lirik yang sudah ketemu disimpan di perangkat (30 lagu terakhir) supaya cepat dan tetap ada saat offline
+  m: store.get('nada.lyr', {}),
+  get(id) { const e = this.m[id]; return e && Date.now() - e.t < 30 * 864e5 ? e.v : null; },
+  set(id, v) {
+    this.m[id] = { t: Date.now(), v };
+    const k = Object.keys(this.m); if (k.length > 30) k.sort((a, b) => this.m[a].t - this.m[b].t).slice(0, k.length - 30).forEach((x) => delete this.m[x]);
+    store.set('nada.lyr', this.m);
+  },
+};
 let lyrUser = 0, lyrReq = 0, lyrTap = false;
 const lyrOffs = store.get('lyrOffs', {});   // geser waktu lirik per lagu (detik)
 const lyrOff = () => (current() && lyrOffs[current().id]) || 0;
@@ -1210,7 +1231,7 @@ function renderLyrics() {
 async function ensureLyrics() {
   const t = current(); if (!t) { renderLyrics(); return; }
   if (state.lyr.id === t.id && state.lyr.status !== 'idle' && state.lyr.status !== 'err') { return; }
-  const hit = lyrCache.get(t.id);
+  const hit = lyrCache.get(t.id) || lyrDisk.get(t.id);
   if (hit) { state.lyr = { id: t.id, ...hit, active: -1 }; renderLyrics(); { $('#stage').scrollTop = 0; $('#lyrics').scrollTop = 0; } return; }
   const my = ++lyrReq;
   state.lyr = { id: t.id, status: 'loading', synced: [], plain: '', src: '', active: -1 };
@@ -1223,21 +1244,29 @@ async function ensureLyrics() {
     await new Promise((r) => setTimeout(r, 250));
   }
   if (my !== lyrReq) return;
-  try {
-    const r = await fetch(`/api/lyrics?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}${dur ? '&dur=' + dur : ''}`);
-    const d = await r.json().catch(() => ({}));
+  // coba sampai 3 kali (jaringan HP / layanan lirik kadang lambat), dengan batas waktu tiap percobaan
+  const url = `/api/lyrics?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}${dur ? '&dur=' + dur : ''}`;
+  let d = null, fail = false;
+  for (let attempt = 0; attempt < 3 && !d; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, attempt * 1200));
     if (my !== lyrReq) return;
-    if (!r.ok) throw new Error(d.error || 'gagal');
+    try {
+      const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 14000);
+      const r = await fetch(url, { signal: ctl.signal }); clearTimeout(to);
+      const j = await r.json().catch(() => null);
+      if (r.ok && j) d = j; else if (r.status === 400) { fail = true; break; }
+    } catch { /* ulangi */ }
+  }
+  if (my !== lyrReq) return;
+  if (!d) { state.lyr = { id: t.id, status: 'err', synced: [], plain: '', src: '', active: -1 }; renderLyrics(); return; }
+  {
     let v;
     if (!d.found) v = { status: 'none', synced: [], plain: '', src: '' };
     else if (d.instrumental) v = { status: 'instrumental', synced: [], plain: '', src: '' };
     else if ((d.synced && d.synced.length) || (d.plain && d.plain.trim())) v = { status: 'ok', synced: d.synced || [], plain: d.plain || '', src: d.source || 'LRCLIB', lrcDur: d.lrcDur || 0, mismatch: !!d.mismatch };
     else v = { status: 'none', synced: [], plain: '', src: '' };
-    if (v.status === 'ok') lyrCache.set(t.id, v);
+    if (v.status === 'ok') { lyrCache.set(t.id, v); lyrDisk.set(t.id, v); }
     state.lyr = { id: t.id, ...v, active: -1 };
-  } catch {
-    if (my !== lyrReq) return;
-    state.lyr = { id: t.id, status: 'err', synced: [], plain: '', src: '', active: -1 };
   }
   renderLyrics();
 }
@@ -1443,7 +1472,7 @@ $('#next').addEventListener('click', () => next());
 $('#prev').addEventListener('click', prev);
 $('#favBtn').addEventListener('click', () => toggleFav(current()));
 $('#moreBtn').addEventListener('click', () => { const t = current(); if (t) openMenu(t, null); });
-$('#shuffle').addEventListener('click', () => { state.shuffle = !state.shuffle; store.set('shuffle', state.shuffle); renderControls(); });
+$('#shuffle').addEventListener('click', () => { state.shuffle = !state.shuffle; store.set('shuffle', state.shuffle); renderControls(); renderPeek(); });
 $('#repeat').addEventListener('click', () => {
   state.repeat = { off: 'all', all: 'one', one: 'off' }[state.repeat];
   store.set('repeat', state.repeat); renderControls();
