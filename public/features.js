@@ -378,12 +378,12 @@ function kTick(force) {
   const t = current(); if (!t) { closeKaraoke(); return; }
   if (NF.k.tid !== t.id) kMeta();
   $('#kPlay').innerHTML = state.playing ? ICON.pause : ICON.play;
-  let cur = 0, dur = 0; try { if (ytReady) { cur = yt.getCurrentTime() || 0; dur = yt.getDuration() || 0; } } catch {}
+  let cur = 0, dur = 0; try { if (ytReady) { cur = lyrNow(); dur = yt.getDuration() || 0; } } catch {}
   $('#kBar').style.width = dur ? (cur / dur * 100) + '%' : '0%';
   const L = state.lyr, box = $('#kLines');
   if (L.id !== t.id || L.status === 'loading' || L.status === 'idle') { sig('load', '<p class="k-msg">Nyari liriknya…</p>'); return; }
   if (L.status === 'instrumental') { sig('ins', '<p class="k-msg">Lagu instrumental, nggak ada liriknya.</p>'); return; }
-  if (L.status !== 'ok') { sig('none', `<p class="k-msg">${L.status === 'err' ? 'Liriknya lagi nggak bisa dimuat.' : 'Lirik lagu ini belum ada nih.'}</p>`); return; }
+  if (L.status !== 'ok') { sig('none' + L.status, `<p class="k-msg">${L.status === 'err' ? 'Liriknya belum bisa dimuat.' : 'Lirik lagu ini belum ada nih.'}<br><button type="button" class="ly-retry" data-kretry>Coba lagi</button></p>`); return; }
   if (!L.synced.length) { sig('plain', '<div class="k-plain">' + L.plain.split(/\r?\n/).map((l) => (l.trim() ? `<p>${esc(l)}</p>` : '<p class="gap"></p>')).join('') + '</div>'); return; }
   const x = cur + 0.25 - lyrOff();
   let lo = 0, hi = L.synced.length - 1, idx = -1;
@@ -404,7 +404,7 @@ $('#kPlay').addEventListener('click', toggle);
 $('#kPrev').addEventListener('click', prev);
 $('#kNext').addEventListener('click', () => next());
 $('#kSize').addEventListener('click', () => { NF.k.size = (NF.k.size + 1) % 3; store.set('kSize', NF.k.size); kEl.dataset.size = NF.k.size; toast(['Huruf kecil', 'Huruf sedang', 'Huruf besar'][NF.k.size]); });
-$('#kLines').addEventListener('click', (e) => { const p = e.target.closest('[data-kt]'); if (p && ytReady) { yt.seekTo(parseFloat(p.dataset.kt) + lyrOff(), true); NF.k.sig = ''; } });
+$('#kLines').addEventListener('click', (e) => { if (e.target.closest('[data-kretry]')) { ensureLyrics(true); return; } const p = e.target.closest('[data-kt]'); if (p && ytReady) { yt.seekTo(parseFloat(p.dataset.kt) + lyrOff(), true); NF.k.sig = ''; } });
 
 /* =====================================================================
    5. CADANGAN & PINDAH PERANGKAT
