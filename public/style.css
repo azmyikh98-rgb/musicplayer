@@ -973,3 +973,12 @@ html[data-layout="desktop"] .sheet[data-pview="lyrics"] .stage{display:block;ove
 html[data-layout="desktop"] .sheet[data-pview="lyrics"] .lyrics{overflow:visible;padding-bottom:30vh}
 html.tv .sheet[data-pview="lyrics"] .lyrics p{font-size:1.5rem}
 @media (max-height:700px){.sheet[data-pview="lyrics"] .lyrics p{font-size:1.5rem}.play-btn{width:4rem;height:4rem}}
+
+/* Lirik gaya Spotify: pudar bertahap menurut jarak dari baris aktif */
+.lyrics p{transition:color .4s ease,opacity .4s ease,transform .4s cubic-bezier(.2,.8,.2,1);will-change:transform}
+.sheet[data-pview="lyrics"] .lyrics p[data-d="1"]:not(.on){color:rgba(255,255,255,.5)}
+.sheet[data-pview="lyrics"] .lyrics p[data-d="2"]:not(.on){color:rgba(255,255,255,.4)}
+.sheet[data-pview="lyrics"] .lyrics p.past:not([data-d="1"]){color:rgba(255,255,255,.26)}
+.sheet[data-pview="lyrics"] .lyrics p.on{color:#fff;transform:scale(1.04)}
+.sheet[data-pview="lyrics"] .lyrics p{transform-origin:left center}
+@media (prefers-reduced-motion:reduce){.lyrics p{transition:color .2s}}

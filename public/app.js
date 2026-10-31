@@ -1374,7 +1374,22 @@ function renderLyrics() {
   L.active = -1;
 }
 
-/* sorot baris yang sedang dinyanyikan dan gulir ke tengah */
+/* Gaya Spotify: baris aktif terang & sedikit membesar, baris di dekatnya meredup bertahap,
+   dan lirik meluncur halus supaya baris yang sedang dinyanyikan selalu di posisi baca (±38% tinggi layar). */
+let lyrAnim = 0;
+function lyrScrollTo(sc, top, instant) {
+  top = Math.max(0, Math.round(top));
+  cancelAnimationFrame(lyrAnim);
+  if (instant || Math.abs(sc.scrollTop - top) < 2) { sc.style.scrollBehavior = 'auto'; sc.scrollTop = top; sc.style.scrollBehavior = ''; return; }
+  const from = sc.scrollTop, d = top - from, t0 = performance.now(), dur = Math.min(700, 320 + Math.abs(d) * 0.45);
+  sc.style.scrollBehavior = 'auto';
+  const step = (now) => {
+    const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    sc.scrollTop = from + d * e;
+    if (k < 1) lyrAnim = requestAnimationFrame(step); else sc.style.scrollBehavior = '';
+  };
+  lyrAnim = requestAnimationFrame(step);
+}
 function lyricsTick(cur) {
   const L = state.lyr, t = current();
   if (state.pview !== 'lyrics' || !t || L.id !== t.id || L.status !== 'ok' || !L.synced.length) return;
@@ -1382,15 +1397,22 @@ function lyricsTick(cur) {
   let lo = 0, hi = L.synced.length - 1, idx = -1;
   while (lo <= hi) { const m = (lo + hi) >> 1; if (L.synced[m][0] <= x) { idx = m; lo = m + 1; } else hi = m - 1; }
   if (idx === L.active) return;
-  const el = $('#lyrics'), own = getComputedStyle(el).overflowY === 'auto', sc = own ? el : $('#stage');
-  el.querySelector('p.on')?.classList.remove('on');
-  L.active = idx;
-  const p = idx >= 0 ? el.querySelector(`[data-ly="${idx}"]`) : null;
-  if (!p) return;
-  p.classList.add('on');
-  if (Date.now() - lyrUser > 4000) sc.scrollTo({ top: Math.max(0, (own ? 0 : el.offsetTop) + p.offsetTop - sc.clientHeight / 2 + p.offsetHeight / 2), behavior: 'smooth' });
+  const el = $('#lyrics');
+  if (!L.els || L.els.length !== L.synced.length) L.els = [...el.querySelectorAll('p[data-ly]')];
+  const els = L.els, prev = L.active; L.active = idx;
+  const from = Math.max(0, Math.min(prev < 0 ? idx : prev, idx) - 5), to = Math.min(els.length - 1, Math.max(prev, idx) + 5);
+  for (let i = from; i <= to; i++) {
+    const p = els[i], d = i - idx;
+    p.dataset.d = Math.min(Math.abs(d), 4);
+    p.classList.toggle('on', d === 0);
+    p.classList.toggle('past', d < 0);
+  }
+  const p = idx >= 0 ? els[idx] : null;
+  if (!p || Date.now() - lyrUser < 4000) return;
+  const own = getComputedStyle(el).overflowY === 'auto', sc = own ? el : $('#stage');
+  lyrScrollTo(sc, (own ? 0 : el.offsetTop) + p.offsetTop - sc.clientHeight * 0.38 + p.offsetHeight / 2, prev < 0 || Math.abs(idx - prev) > 2);
 }
-setInterval(() => { if (state.pview === 'lyrics' && ytReady && current()) lyricsTick(lyrNow()); }, 120);
+(function lyrLoop() { if (state.pview === 'lyrics' && ytReady && current()) lyricsTick(lyrNow()); requestAnimationFrame(lyrLoop); })();
 /* durasi video baru diketahui belakangan: pilih ulang versi yang paling cocok (sekali, kecuali sudah dipilih manual) */
 setInterval(() => {
   const L = state.lyr, t = current(); if (!t || L.id !== t.id || L.status !== 'ok' || L.userSel || L.items.length < 2) return;
@@ -1562,7 +1584,7 @@ $('#lyrics').addEventListener('click', (e) => {
   if (lyrTap && current()) { setOff(lyrNow() - parseFloat(p.dataset.t)); toast('Sinkron! Lirik udah pas'); return; }
   lyrUser = 0; yt.seekTo(parseFloat(p.dataset.t), true);
 });
-['wheel', 'touchmove'].forEach((ev) => $('#stage').addEventListener(ev, () => { lyrUser = Date.now(); }, { passive: true }));
+['wheel', 'touchmove', 'touchstart'].forEach((ev) => $('#stage').addEventListener(ev, () => { lyrUser = Date.now(); cancelAnimationFrame(lyrAnim); $('#stage').style.scrollBehavior = ''; }, { passive: true }));
 $('#nextPeek').addEventListener('click', (e) => { state.idx = +e.currentTarget.dataset.upi; load(0); });
 /* tarik ke bawah untuk menutup pemutar */
 (function () {
