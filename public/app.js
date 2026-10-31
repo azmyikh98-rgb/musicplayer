@@ -105,6 +105,18 @@ function ctxTracks(ctx) {
   return [];
 }
 const splitRef = (ref) => { const i = ref.lastIndexOf(':'); return [ref.slice(0, i), +ref.slice(i + 1)]; };
+/* Cari lagu yang BENAR-BENAR diketuk lewat id-nya, bukan nomor urut. Daftar di layar bisa sudah berubah urutan
+   (mis. "Terakhir diputar" bergeser tiap ada lagu baru), jadi nomor urut lama bisa menunjuk lagu lain. */
+function resolveRow(el, ctx, hint) {
+  const row = el.closest('[data-id]'), list = ctxTracks(ctx) || [], id = row && row.dataset.id;
+  if (id) {
+    const k = list[hint] && list[hint].id === id ? hint : list.findIndex((x) => x.id === id);
+    if (k >= 0) return { list, i: k, track: list[k] };
+    const tr = { id, title: (row.querySelector('.meta b, :scope > b') || {}).textContent || '', artist: (row.querySelector('.meta small, :scope > small') || {}).textContent || '', thumb: (row.querySelector('img') || {}).src || thumb(id) };
+    return { list: [tr], i: 0, track: tr };
+  }
+  return { list, i: hint, track: list[hint] };
+}
 
 /* ---------- toast ---------- */
 let toastTimer;
@@ -1068,17 +1080,14 @@ window.onYouTubeIframeAPIReady = () => {
       },
       onStateChange(e) {
         const S = YT.PlayerState;
-        if (e.data === S.PLAYING) setPlaying(true);
+        if (e.data === S.PLAYING) { errChain = 0; setPlaying(true); }
         else if (e.data === S.PAUSED) {
           setPlaying(false);
           // dijeda sistem saat app di latar? coba lanjutkan (bukan jeda dari pengguna)
           if (state.want && document.hidden) setTimeout(() => { if (state.want && document.hidden) yt.playVideo(); }, 400);
         } else if (e.data === S.ENDED) { setPlaying(false); next(true); }
       },
-      onError() {
-        toast('Lagu ini nggak bisa diputar di luar YouTube, skip ke yang berikutnya…');
-        setTimeout(() => next(true), 1200);
-      },
+      onError(e) { ytFail(e && e.data); },
     },
   });
 };
@@ -1102,6 +1111,32 @@ const keep = (() => {
   };
 })();
 
+
+/* Lagu tidak bisa diputar (diblokir pemilik video / tidak boleh disematkan): cari versi lain yang bisa; kalau tidak ada,
+   jangan diam-diam lompat ke lagu lain saat pengguna sendiri yang memilih lagunya. */
+let errTried = new Set(), errChain = 0, autoLoad = false;
+async function ytFail(code) {
+  const t = current(); if (!t) return;
+  const id = t.id, idx0 = state.idx;
+  const stillHere = () => current() && current().id === id && state.idx === idx0;
+  const skip = () => { if (++errChain > 3) { errChain = 0; toast('Beberapa lagu berturut-turut tidak bisa diputar. Dihentikan dulu.'); state.want = false; keep.stop(); return; } next(true); };
+  if (!errTried.has(id)) {
+    errTried.add(id);
+    toast('Versi ini diblokir YouTube, nyari versi lain…');
+    try {
+      const r = await searchApi(`${t.title} ${t.artist}`, true);
+      const alt = (r.items || []).find((x) => x.id !== id && !errTried.has(x.id) && lyDice(x.title, t.title) >= 0.5);
+      if (!stillHere()) return;
+      if (alt) { state.queue[state.idx] = { ...alt }; errTried.add(alt.id); toast('Memutar versi lain dari lagu ini'); autoLoad = false; load(0); return; }
+    } catch { if (!stillHere()) return; }
+  }
+  if (!stillHere()) return;
+  if (userPick) { toast(`"${t.title}" nggak bisa diputar di luar YouTube. Coba lagu lain ya.`); state.want = false; keep.stop(); setPlaying(false); return; }
+  toast('Lagu ini nggak bisa diputar, lanjut ke berikutnya…');
+  setTimeout(() => { if (stillHere()) skip(); }, 900);
+}
+let userPick = true;
+
 function setPlaying(v) {
   state.playing = v; renderControls();
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = v ? 'playing' : 'paused';
@@ -1114,6 +1149,7 @@ function playList(list, i) {
 
 function load(start = 0) {
   const t = current(); if (!t) return;
+  userPick = !autoLoad; autoLoad = false;
   state.want = true; keep.start();
   if (ytReady) yt.loadVideoById({ videoId: t.id, startSeconds: start }); else pending = { id: t.id, start };
   state.recent = [slim(t), ...state.recent.filter((x) => x.id !== t.id)].slice(0, 50);
@@ -1128,7 +1164,8 @@ function playYT() { if (!ytReady || !current()) return; state.want = true; keep.
 function pauseYT() { if (!ytReady) return; state.want = false; yt.pauseVideo(); keep.stop(); }
 function toggle() { state.playing ? pauseYT() : playYT(); }
 
-function next(auto = false) {
+function next(auto = false) { autoLoad = !!auto; try { nextInner(auto); } finally { autoLoad = false; } }
+function nextInner(auto) {
   const n = state.queue.length; if (!n) return;
   if (auto && state.sleep && state.sleep.mode === 'end') { sleepFire(); return; }
   if (auto && state.repeat === 'one') { yt.seekTo(0, true); yt.playVideo(); return; }
@@ -1349,6 +1386,7 @@ const lyrSearchLink = (t) => `https://www.google.com/search?q=${encodeURICompone
 function renderLyrics() {
   const el = $('#lyrics'), L = state.lyr, t = current();
   el.classList.toggle('plain', L.status === 'ok' && !L.synced.length);
+  L.els = null; L.active = -1;   // DOM dibuat ulang: daftar elemen lama tidak boleh dipakai lagi
   if (!t) { el.innerHTML = '<p class="ly-msg">Putar lagu untuk melihat liriknya.</p>'; return; }
   if (L.status === 'idle' || L.status === 'loading') { el.innerHTML = '<div class="ly-sk" style="width:80%"></div><div class="ly-sk" style="width:60%"></div><div class="ly-sk" style="width:72%"></div><div class="ly-sk" style="width:50%"></div>'; return; }
   if (L.status === 'instrumental') { el.innerHTML = '<p class="ly-msg">Lagu instrumental, tidak ada lirik.</p>'; return; }
@@ -1428,12 +1466,13 @@ function lyrPlainTick(cur) {
   sc.style.scrollBehavior = 'auto'; sc.scrollTop = Math.abs(sc.scrollTop - target) > 120 ? target : sc.scrollTop + Math.sign(target - sc.scrollTop) * Math.max(1, Math.min(3, Math.abs(target - sc.scrollTop)));
 }
 (function lyrLoop() { if (state.pview === 'lyrics' && ytReady && current()) { const c = lyrNow(); lyricsTick(c); lyrPlainTick(c); } requestAnimationFrame(lyrLoop); })();
-/* durasi video baru diketahui belakangan: pilih ulang versi yang paling cocok (sekali, kecuali sudah dipilih manual) */
+/* durasi video baru diketahui belakangan: pilih ulang versi yang paling cocok dan tampilkan petunjuk selisih durasi */
 setInterval(() => {
-  const L = state.lyr, t = current(); if (!t || L.id !== t.id || L.status !== 'ok' || L.userSel || L.items.length < 2) return;
+  const L = state.lyr, t = current(); if (!t || L.id !== t.id || L.status !== 'ok') return;
   const v = lyrVDur(); if (!v || v === L.vdurAt) return;
-  const i = lyrPick(L.items, v), was = L.sel; lyrApply(L, i, v);
-  if (i !== was) renderLyrics();
+  const was = L.sel;
+  if (!L.userSel && L.items.length > 1) lyrApply(L, lyrPick(L.items, v), v); else { L.vdurAt = v; lyrApply(L, L.sel, v); }
+  renderLyrics();   // petunjuk "video lebih panjang" bergantung pada durasi
 }, 1000);
 
 /* progres */
@@ -1514,9 +1553,9 @@ $('#officialBtn').addEventListener('click', () => {
 $('#list').addEventListener('click', (e) => {
   const t = e.target; let el;
   if ((el = t.closest('[data-hs]'))) { const sc = el.parentElement.querySelector('.hscroll'); sc.scrollBy({ left: +el.dataset.hs * sc.clientWidth * 0.8, behavior: 'smooth' }); return; }
-  if ((el = t.closest('[data-like]'))) { const [c, i] = splitRef(el.dataset.like); toggleFav(ctxTracks(c)[i]); return; }
-  if ((el = t.closest('[data-more]'))) { const [c, i] = splitRef(el.dataset.more); const tr = ctxTracks(c)[i]; if (tr) openMenu(tr, c); return; }
-  if ((el = t.closest('[data-play]'))) { playList(ctxTracks(el.dataset.play), +el.dataset.i); return; }
+  if ((el = t.closest('[data-like]'))) { const [c, i] = splitRef(el.dataset.like); const r = resolveRow(el, c, i); if (r.track) toggleFav(r.track); return; }
+  if ((el = t.closest('[data-more]'))) { const [c, i] = splitRef(el.dataset.more); const r = resolveRow(el, c, i); if (r.track) openMenu(r.track, c); return; }
+  if ((el = t.closest('[data-play]'))) { const r = resolveRow(el, el.dataset.play, +el.dataset.i); if (r.track) playList(r.list, r.i); return; }
   if ((el = t.closest('[data-playall]'))) { const l = ctxTracks(el.dataset.playall); if (l.length) playList(l, 0); return; }
   if ((el = t.closest('[data-shuffleall]'))) { const l = ctxTracks(el.dataset.shuffleall); if (l.length) { state.shuffle = true; store.set('shuffle', true); playList(l, Math.floor(Math.random() * l.length)); renderControls(); toast('Acak aktif'); } return; }
   if (t.closest('[data-rename]')) {
@@ -1568,9 +1607,14 @@ $('#mini').addEventListener('click', (e) => {
   if (e.target.closest('#miniNext')) return next();
   $('#player').classList.add('open');
 });
+function goTo(i) {   // lompat ke indeks antrean mana pun dengan menjaga hitungan antrean pengguna
+  if (!(i >= 0 && i < state.queue.length) || i === state.idx) return;
+  state.userQ = i > state.idx ? Math.max(0, state.userQ - (i - state.idx)) : 0;
+  state.idx = i; load(0); if (typeof qChanged === 'function') qChanged();
+}
 $('#upnext').addEventListener('click', (e) => {
   const el = e.target.closest('[data-upi]'); if (!el) return;
-  state.idx = +el.dataset.upi; load(0);
+  goTo(+el.dataset.upi);
 });
 $('#pvVideo').addEventListener('click', () => setPview('video'));
 $('#pvLyrics').addEventListener('click', () => setPview('lyrics'));
@@ -1600,7 +1644,7 @@ $('#lyrics').addEventListener('click', (e) => {
   lyrUser = 0; yt.seekTo(parseFloat(p.dataset.t), true);
 });
 ['wheel', 'touchmove', 'touchstart'].forEach((ev) => $('#stage').addEventListener(ev, () => { lyrUser = Date.now(); cancelAnimationFrame(lyrAnim); $('#stage').style.scrollBehavior = ''; }, { passive: true }));
-$('#nextPeek').addEventListener('click', (e) => { state.idx = +e.currentTarget.dataset.upi; load(0); });
+$('#nextPeek').addEventListener('click', (e) => { goTo(+e.currentTarget.dataset.upi); });
 /* tarik ke bawah untuk menutup pemutar */
 (function () {
   const sh = $('#player'); let d = null;
@@ -1693,7 +1737,7 @@ function spatial(dir) {
 function focusedItem() {
   const el = document.activeElement?.closest?.('[data-play]');
   if (!el) return null;
-  return { track: ctxTracks(el.dataset.play)[+el.dataset.i], ctx: el.dataset.play };
+  return { track: resolveRow(el, el.dataset.play, +el.dataset.i).track, ctx: el.dataset.play };
 }
 function likeFocused() { const f = focusedItem(); toggleFav(f ? f.track : current()); }
 function menuFocused() { const f = focusedItem(); const t = f ? f.track : current(); if (t) openMenu(t, f ? f.ctx : null); }
@@ -2008,7 +2052,7 @@ if (state.tab === 'home' || state.tab === 'library') loadCharts();
 /* ---------- Versi & pembaruan ----------
    Versi aplikasi dicek ke /version.json (tanpa cache). Kalau beda dengan yang berjalan, cache & service worker dibersihkan lalu
    aplikasi dimuat ulang otomatis. Tombol "Perbarui aplikasi" di Pustaka melakukan hal yang sama secara manual. */
-const APP_V = '2026.11.01-3';
+const APP_V = '2026.11.01-4';
 async function appUpdate(manual) {
   try {
     let latest = APP_V;
