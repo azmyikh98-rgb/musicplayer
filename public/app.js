@@ -1257,7 +1257,11 @@ const lyGet = async (u, ms) => { const c = new AbortController(), to = setTimeou
 async function lyrServer(t) {
   try {
     const r = await lyGet(`/api/lyrics?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist)}`, 11000);
-    return r && r.v === 2 && Array.isArray(r.items) ? { items: r.items, reached: true } : null;
+    if (r && r.v === 2 && Array.isArray(r.items)) return { items: r.items, reached: true };
+    // server lama (belum ter-deploy ulang) membalas format lama: tetap dipakai
+    if (r && r.found) { const sy = Array.isArray(r.synced) ? r.synced : []; return { items: [{ name: r.title || '', artist: r.artist || '', dur: r.lrcDur || 0, synced: sy, plain: r.plain || '', instr: !!r.instrumental, src: r.source || 'LRCLIB', rel: 0.8 }], reached: true }; }
+    if (r && r.found === false) return { items: [], reached: true };
+    return null;
   } catch { return null; }
 }
 /* langsung dari browser HP (LRCLIB mendukung CORS) */
@@ -1368,7 +1372,7 @@ function renderLyrics() {
       + `${nv > 1 ? `<button type="button" data-lyver>Versi ${L.items.indexOf(L.items[L.sel]) + 1}/${nv}</button>` : ''}`
       + `${off ? '<button type="button" data-lyreset>Reset</button>' : ''}</div></div>`;
   }
-  const src = `<div class="ly-src"><span>Lirik dari ${esc(L.src || 'LRCLIB')}</span></div>`;
+  const src = `<div class="ly-src"><span>Lirik dari ${esc(L.src || 'LRCLIB')}${L.synced.length ? '' : ' · tanpa penanda waktu, jadi digulir otomatis perkiraan'} · v${APP_V}</span></div>`;
   if (L.synced.length) el.innerHTML = bar + L.synced.map((l, i) => `<p data-ly="${i}" data-t="${l[0]}"${l[1] ? '' : ' class="gap"'}>${l[1] ? esc(l[1]) : '♪'}</p>`).join('') + src;
   else el.innerHTML = L.plain.split(/\r?\n/).map((l) => (l.trim() ? `<p>${esc(l)}</p>` : '<p class="gap"></p>')).join('') + src;
   L.active = -1;
@@ -1412,7 +1416,18 @@ function lyricsTick(cur) {
   const own = getComputedStyle(el).overflowY === 'auto', sc = own ? el : $('#stage');
   lyrScrollTo(sc, (own ? 0 : el.offsetTop) + p.offsetTop - sc.clientHeight * 0.38 + p.offsetHeight / 2, prev < 0 || Math.abs(idx - prev) > 2);
 }
-(function lyrLoop() { if (state.pview === 'lyrics' && ytReady && current()) lyricsTick(lyrNow()); requestAnimationFrame(lyrLoop); })();
+/* lirik tanpa penanda waktu: gulir mengikuti kemajuan lagu (perkiraan) supaya tetap bergerak */
+function lyrPlainTick(cur) {
+  const L = state.lyr, t = current(), dur = lyrVDur();
+  if (!t || L.id !== t.id || L.status !== 'ok' || L.synced.length || !dur || Date.now() - lyrUser < 4000) return;
+  const el = $('#lyrics'), own = getComputedStyle(el).overflowY === 'auto', sc = own ? el : $('#stage');
+  const max = Math.max(0, (own ? el.scrollHeight - el.clientHeight : $('#stage').scrollHeight - $('#stage').clientHeight) - 0);
+  const frac = Math.max(0, Math.min(1, (cur - 8) / Math.max(1, dur - 30)));
+  const target = Math.round(frac * max);
+  if (Math.abs(sc.scrollTop - target) < 2) return;
+  sc.style.scrollBehavior = 'auto'; sc.scrollTop = Math.abs(sc.scrollTop - target) > 120 ? target : sc.scrollTop + Math.sign(target - sc.scrollTop) * Math.max(1, Math.min(3, Math.abs(target - sc.scrollTop)));
+}
+(function lyrLoop() { if (state.pview === 'lyrics' && ytReady && current()) { const c = lyrNow(); lyricsTick(c); lyrPlainTick(c); } requestAnimationFrame(lyrLoop); })();
 /* durasi video baru diketahui belakangan: pilih ulang versi yang paling cocok (sekali, kecuali sudah dipilih manual) */
 setInterval(() => {
   const L = state.lyr, t = current(); if (!t || L.id !== t.id || L.status !== 'ok' || L.userSel || L.items.length < 2) return;
@@ -1990,6 +2005,26 @@ if (/[#?&](c|code|share)=/.test(location.hash)) {
 }
 renderQBadge(); renderSleep(); applyLayout(); setPview(state.pview); updateOfficialBtn(); renderControls(); render();
 if (state.tab === 'home' || state.tab === 'library') loadCharts();
+/* ---------- Versi & pembaruan ----------
+   Versi aplikasi dicek ke /version.json (tanpa cache). Kalau beda dengan yang berjalan, cache & service worker dibersihkan lalu
+   aplikasi dimuat ulang otomatis. Tombol "Perbarui aplikasi" di Pustaka melakukan hal yang sama secara manual. */
+const APP_V = '2026.11.01-3';
+async function appUpdate(manual) {
+  try {
+    let latest = APP_V;
+    try { const r = await fetch('/version.json?t=' + Date.now(), { cache: 'no-store' }); if (r.ok) latest = (await r.json()).v || APP_V; } catch { if (!manual) return; }
+    if (!manual && latest === APP_V) return;
+    if (!manual) { let tried = ''; try { tried = sessionStorage.getItem('nada.upd') || ''; } catch {} if (tried === latest) return; try { sessionStorage.setItem('nada.upd', latest); } catch {} }
+    toast(manual ? 'Memuat ulang versi terbaru…' : 'Memperbarui aplikasi…');
+    if ('serviceWorker' in navigator) { const regs = await navigator.serviceWorker.getRegistrations(); await Promise.all(regs.map((r) => r.unregister())); }
+    if (window.caches) { const ks = await caches.keys(); await Promise.all(ks.map((k) => caches.delete(k))); }
+    setTimeout(() => location.reload(), 400);
+  } catch { if (manual) toast('Gagal memperbarui. Coba tutup dan buka lagi aplikasinya.'); }
+}
+let lastUpd = 0;
+setTimeout(() => appUpdate(false), 2500);
+document.addEventListener('visibilitychange', () => { if (!document.hidden && Date.now() - lastUpd > 60000) { lastUpd = Date.now(); appUpdate(false); } });
+
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
 }

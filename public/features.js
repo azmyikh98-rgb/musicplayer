@@ -550,7 +550,8 @@ function featViewMeta(ctx) {
 function featLibTiles(lib) {
   return '<div class="lib-h">Kamu</div>'
     + lib('data-open="recap"', FI.recap, false, 'Nada Recap', 'Ringkasan dengar musikmu')
-    + lib('data-backup', FI.backup, false, 'Cadangan & pindah data', 'Simpan atau pindah ke perangkat lain');
+    + lib('data-backup', FI.backup, false, 'Cadangan & pindah data', 'Simpan atau pindah ke perangkat lain')
+    + lib('data-update', FI.backup, false, 'Perbarui aplikasi', 'Versi ' + APP_V + ' · ketuk untuk memuat ulang versi terbaru');
 }
 $('#list').addEventListener('click', (e) => {
   const t = e.target; let el;
@@ -564,5 +565,6 @@ $('#list').addEventListener('click', (e) => {
   }
   if (t.closest('[data-mixrefresh]')) { NF.mixSalt++; NF.mix = null; buildMixes().then(() => { if (state.view && state.view.ctx.startsWith('mix:')) closeView(); toast('Mix diracik ulang'); }); return; }
   if (t.closest('[data-backup]')) { openMenu(null, null, 'bk'); return; }
+  if (t.closest('[data-update]')) { appUpdate(true); return; }
 });
 render();
