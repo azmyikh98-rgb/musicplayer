@@ -96,6 +96,7 @@ const slim = (t) => ({ id: t.id, title: t.title, artist: t.artist, thumb: t.thum
 function ctxTracks(ctx) {
   if (ctx === 'search') return state.results;
   if (ctx && ctx.startsWith('artist:')) return artistTracks(ctx.slice(7));
+  if (ctx && typeof featTracks === 'function') { const r = featTracks(ctx); if (r) return r; }
   if (ctx === 'liked') return state.fav;
   if (ctx === 'recent') return state.recent;
   if (ctx === 'chartID') return state.charts.ID || [];
@@ -251,6 +252,9 @@ function homeHTML() {
     + quickTile('data-open="chartGLOBAL"', ICON.list, false, 'Top Global', 'Lagi hits')
     + `</div>`;
 
+  // 2b. mix harian yang dibuat dari kebiasaan dengarmu
+  out += typeof mixSection === 'function' ? mixSection() : '';
+
   // 3. lagi ramai: tangga lagu di atas supaya beranda langsung terasa hidup
   out += zone('Jelajahi') + chartsBlock();
 
@@ -302,6 +306,7 @@ function libraryHTML() {
   out += lib('data-open="recent"', ICON.clock, false, 'Baru diputar', `${state.recent.length} lagu`);
   out += lib('data-open="chartID"', ICON.list, false, 'Tangga Lagu Indonesia', 'Lagu-lagu paling hits di Indonesia');
   out += lib('data-open="chartGLOBAL"', ICON.list, false, 'Tangga Lagu Global', 'Yang lagi hits di berbagai negara');
+  out += typeof featLibTiles === 'function' ? featLibTiles(lib) : '';
   out += '<div class="lib-h">Playlist</div>';
   out += lib('data-newpl', ICON.plus, false, 'Bikin playlist baru', 'Kumpulin lagu andalanmu');
   out += lib('data-import', ICON.download, false, 'Impor playlist', 'Pakai kode atau QR dari device lain');
@@ -319,6 +324,7 @@ const VIEW_TITLES = { liked: 'Liked Songs', recent: 'Baru diputar', chartID: 'Ta
 function viewHTML() {
   const ctx = state.view.ctx;
   if (ctx.startsWith('artist:')) return artistViewHTML(ctx.slice(7));
+  if (typeof featView === 'function') { const fv = featView(ctx); if (fv) return fv; }
   const isPl = ctx.startsWith('pl:');
   const pl = isPl ? state.playlists.find((p) => p.id === ctx.slice(3)) : null;
   if (isPl && !pl) { state.view = null; return state.tab === 'library' ? libraryHTML() : homeHTML(); }
@@ -392,8 +398,9 @@ function renderNavbar() {
   if (state.view) {
     const ctx = state.view.ctx, pl = ctx.startsWith('pl:') ? state.playlists.find((p) => p.id === ctx.slice(3)) : null;
     const isArt = ctx.startsWith('artist:');
-    const kind = isArt ? 'Artis' : pl ? 'Playlist' : ctx === 'liked' ? 'Koleksi' : ctx === 'recent' ? 'Riwayat' : 'Tangga lagu';
-    html = `<button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><div class="nt"><small>${kind}</small><b>${esc(isArt ? ctx.slice(7) : pl ? pl.name : VIEW_TITLES[ctx] || '')}</b></div>`;
+    const fm = typeof featViewMeta === 'function' ? featViewMeta(ctx) : null;
+    const kind = fm ? fm.kind : isArt ? 'Artis' : pl ? 'Playlist' : ctx === 'liked' ? 'Koleksi' : ctx === 'recent' ? 'Riwayat' : 'Tangga lagu';
+    html = `<button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><div class="nt"><small>${kind}</small><b>${esc(fm ? fm.title : isArt ? ctx.slice(7) : pl ? pl.name : VIEW_TITLES[ctx] || '')}</b></div>`;
   } else if (state.tab === 'search' && state.sMode === 'results') {
     const title = state.genre || (state.q && !/^https?:/i.test(state.q) ? state.q : 'Hasil pencarian');
     html = `<button class="icon-btn" data-nav data-sback aria-label="Kembali ke pilihan genre">${ICON.back}</button><div class="nt"><small>${state.genre ? 'Genre' : 'Hasil pencarian'}</small><b>${esc(title)}</b></div>`;
@@ -499,7 +506,7 @@ function closeView() { state.view = null; state.confirmDel = false; render(); }
 let navPushed = 0, navSilent = false;
 const navLayers = () => {
   const full = document.documentElement.dataset.layout !== 'desktop' && !document.documentElement.classList.contains('tv');
-  return (!$('#menu').hidden ? 1 : 0) + (!$('#queueSheet').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab === 'search' && state.sMode === 'results' ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
+  return (!$('#menu').hidden ? 1 : 0) + (!$('#karaoke').hidden ? 1 : 0) + (!$('#queueSheet').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab === 'search' && state.sMode === 'results' ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
 };
 function navSync() {
   const n = navLayers();
@@ -512,6 +519,7 @@ window.addEventListener('popstate', () => {
   if (navSilent) { navSilent = false; return; }
   if (navPushed > 0) navPushed--;
   if (!$('#menu').hidden) closeMenu();
+  else if (!$('#karaoke').hidden) closeKaraoke();
   else if (!$('#queueSheet').hidden) closeQueue();
   else if ($('#player').classList.contains('open') && document.documentElement.dataset.layout !== 'desktop') $('#player').classList.remove('open');
   else if (state.view) closeView();
@@ -519,6 +527,7 @@ window.addEventListener('popstate', () => {
   else if (state.tab !== 'home') setTab('home');
 });
 new MutationObserver(navSync).observe($('#player'), { attributes: true, attributeFilter: ['class'] });
+new MutationObserver(navSync).observe($('#karaoke'), { attributes: true, attributeFilter: ['hidden'] });
 new MutationObserver(navSync).observe($('#queueSheet'), { attributes: true, attributeFilter: ['hidden'] });
 new MutationObserver(navSync).observe($('#menu'), { attributes: true, attributeFilter: ['hidden'] });
 
@@ -736,6 +745,8 @@ function renderMenu() {
     if (!document.documentElement.classList.contains('tv')) h += act('story', ICON.story, 'Bagikan ke Story');
     if (ctx && ctx.startsWith('pl:')) h += act('rmpl', ICON.trash, 'Hapus dari playlist ini');
     h += act('close', ICON.back, 'Tutup');
+  } else if (mode.startsWith('bk')) {
+    h += backupMenuHTML(mode);
   } else if (mode === 'sleep') {
     const S = state.sleep;
     h += '<div class="sub">Timer tidur</div>';
@@ -970,6 +981,7 @@ $('#menu').addEventListener('click', (e) => {
   const { track, ctx } = mctx, a = b.dataset.act;
   if (a === 'plname') { const i = $('#plName'); i.value = b.dataset.v; i.dispatchEvent(new Event('input', { bubbles: true })); i.focus(); return; }
   if (a === 'close') { closeMenu(); render(); }
+  else if (a.startsWith('bk')) { backupAct(a, b); }
   else if (a === 'addart') { followArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
   else if (a === 'delart') { unfollowArtist(b.dataset.name); renderMenu(); render(); $('#menuBody .act')?.focus(); }
   else if (a === 'copycode') { const S = mctx.share; copyText(S.code || S.payload, S.code ? 'Kode udah disalin' : 'Kode panjang udah disalin'); }
@@ -1015,6 +1027,7 @@ $('#menu').addEventListener('submit', (e) => {
     closeMenu(); state.tab = 'home'; store.set('tab', 'home'); openView('pl:' + p.id);
     return;
   }
+  if (e.target.id === 'bkForm') return;   // ditangani features.js
   const name = $('#plName').value.trim();
   if (!name) return;
   const p = { id: uid(), name, tracks: [] };
@@ -1082,7 +1095,10 @@ function setPlaying(v) {
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = v ? 'playing' : 'paused';
 }
 
-function playList(list, i) { state.queue = list.slice(); state.idx = i; state.userQ = 0; load(0); }
+function playList(list, i) {
+  state.src = list === state.results && state.genre ? ((GENRES.find((g) => g[0] === state.genre) || [])[1] || null) : null;   // asal lagu, untuk rekomendasi
+  state.queue = list.slice(); state.idx = i; state.userQ = 0; load(0);
+}
 
 function load(start = 0) {
   const t = current(); if (!t) return;
@@ -1110,6 +1126,7 @@ function next(auto = false) {
     state.idx = r;
   } else if (state.idx + 1 < n) state.idx++;
   else if (state.repeat === 'all' || !auto) state.idx = 0;
+  else if (auto && typeof autoplayNext === 'function' && autoplayNext()) return;
   else { state.want = false; keep.stop(); setPlaying(false); return; }
   load(0);
 }
@@ -1472,6 +1489,7 @@ function seekBy(sec) {
 
 const visible = (el) => el.getClientRects().length > 0;
 function focusables() {
+  if (!$('#karaoke').hidden) return [...document.querySelectorAll('#karaoke button')].filter(visible);
   if (!$('#menu').hidden) return [...document.querySelectorAll('#menu button, #menu input')].filter(visible);
   return [...document.querySelectorAll('.tabs button, #navbar [data-nav], #q, #officialBtn, #suggest button, #list [data-nav], #pvVideo, #pvLyrics, #qBtn, #sleepBtn, #artBtn, #queueSheet [data-nav], #upnext [data-nav], #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
 }
@@ -1517,6 +1535,7 @@ document.addEventListener('keydown', (e) => {
 
   if (k === 'Escape' || (state.tv && (k === 'Backspace' || k === 'GoBack' || kc === 10009 || kc === 461) && !typing)) {
     if (!$('#menu').hidden) { e.preventDefault(); closeMenu(); return; }
+    if (!$('#karaoke').hidden) { e.preventDefault(); closeKaraoke(); return; }
     if (!$('#queueSheet').hidden) { e.preventDefault(); closeQueue(); return; }
     if (!$('#suggest').hidden) { e.preventDefault(); hideSuggest(); $('#q').blur(); return; }
     if (typing) { t.blur(); return; }
@@ -1667,7 +1686,7 @@ function renderQueueSheet() {
   h += `<div class="q-sec">Berikutnya${state.shuffle ? '<em class="shf">acak</em>' : ''}</div>`;
   h += rest.length ? rest.slice(0, 60).map((i) => qRow(q[i], i)).join('') : '<p class="q-end">Habis di sini. Aktifkan ulangi, atau tambahin lagu lewat menu titik tiga.</p>';
   if (state.shuffle && rest.length) h += '<p class="q-end">Mode acak aktif, urutan di atas bisa berubah saat diputar.</p>';
-  body.innerHTML = h;
+  body.innerHTML = h + (typeof similarHTML === 'function' ? similarHTML() : '');
 }
 function openQueue() { $('#queueSheet').hidden = false; renderQueueSheet(); $('#qsClose').focus(); }
 function closeQueue() { $('#queueSheet').hidden = true; }

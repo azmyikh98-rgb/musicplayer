@@ -129,6 +129,7 @@ html.nosplash #splash{display:none}
     <div class="pview" role="group" aria-label="Tampilan pemutar">
       <button id="pvVideo" type="button" aria-pressed="true">Video</button>
       <button id="pvLyrics" type="button" aria-pressed="false">Lirik</button>
+      <button id="kBtn" class="kbtn" type="button" aria-label="Lirik layar penuh" title="Lirik layar penuh"><svg viewBox="0 0 24 24"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
     </div>
     <div class="stage" id="stage">
       <div class="video"><div id="yt"></div></div>
@@ -156,6 +157,20 @@ html.nosplash #splash{display:none}
       <button id="artBtn" class="xbtn" type="button" aria-label="Buka halaman artis"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.6"/><path d="M5 20c.6-3.6 3.5-5.5 7-5.5s6.4 1.9 7 5.5"/></svg><span>Artis</span></button>
     </div>
     <div id="upnext" class="upnext" aria-label="Berikutnya"></div>
+  </section>
+
+  <section id="karaoke" class="karaoke" hidden role="dialog" aria-modal="true" aria-label="Lirik layar penuh">
+    <div class="k-bg" aria-hidden="true"><img id="kImg" alt=""></div><div class="k-tint" aria-hidden="true"></div>
+    <div class="k-top">
+      <button id="kClose" class="icon-btn" type="button" aria-label="Tutup layar penuh"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+      <div class="k-meta"><b id="kTitle"></b><small id="kArtist"></small></div>
+      <button id="kSize" class="icon-btn ksz" type="button" aria-label="Ubah ukuran huruf">Aa</button>
+    </div>
+    <div id="kLines" class="k-lines" aria-live="off"></div>
+    <div class="k-bot">
+      <div class="k-prog" aria-hidden="true"><i id="kBar"></i></div>
+      <div class="k-ctl"><button id="kPrev" class="icon-btn" type="button" aria-label="Sebelumnya"></button><button id="kPlay" class="play-btn" type="button" aria-label="Putar/Jeda"></button><button id="kNext" class="icon-btn" type="button" aria-label="Berikutnya"></button></div>
+    </div>
   </section>
 
   <section id="queueSheet" class="qsheet" hidden role="dialog" aria-modal="true" aria-label="Antrean">
@@ -192,6 +207,7 @@ html.nosplash #splash{display:none}
 <script src="/qr.js"></script>
 <script src="/story.js"></script>
 <script src="/app.js"></script>
+<script src="/features.js"></script>
 <script src="https://www.youtube.com/iframe_api" async></script>
 </body>
 </html>
