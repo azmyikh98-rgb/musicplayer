@@ -24,6 +24,8 @@ const avatar = (a) => a.thumb
   : `<div class="av" style="background:linear-gradient(135deg,hsl(${artHue(a.name)},65%,55%),hsl(${(artHue(a.name) + 40) % 360},65%,35%))">${esc(a.name.charAt(0).toUpperCase())}</div>`;
 
 const ICON = {
+  qnext: '<svg viewBox="0 0 24 24"><path d="M4 6h10M4 11h7M4 16h7M16 9l4 3-4 3z"/></svg>',
+  qadd: '<svg viewBox="0 0 24 24"><path d="M4 6h12M4 11h12M4 16h7M17 14v6M14 17h6"/></svg>',
   scan: '<svg viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M4 12h16"/></svg>',
   share: '<svg viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 13v6h14v-6"/></svg>',
   download: '<svg viewBox="0 0 24 24"><path d="M12 4v11M8 11l4 4 4-4M5 19h14"/></svg>',
@@ -75,6 +77,9 @@ const state = {
   lyr: { id: '', status: 'idle', synced: [], plain: '', src: '', active: -1 },
   confirmDel: false,
   queue: [], idx: -1,
+  userQ: 0,                                  // jumlah lagu antrean buatan pengguna tepat setelah lagu yang diputar
+  sleep: null,                               // {mode:'time',at} | {mode:'end'}
+  artistData: {},                            // cache halaman artis: nama -> {status,tracks}
   shuffle: store.get('shuffle', false),
   repeat: store.get('repeat', 'off'),        // off | all | one
   playing: false,                            // status sebenarnya dari player
@@ -90,6 +95,7 @@ const slim = (t) => ({ id: t.id, title: t.title, artist: t.artist, thumb: t.thum
 /* konteks daftar: 'search' | 'liked' | 'recent' | 'chartID' | 'chartGLOBAL' | 'pl:<id>' */
 function ctxTracks(ctx) {
   if (ctx === 'search') return state.results;
+  if (ctx && ctx.startsWith('artist:')) return artistTracks(ctx.slice(7));
   if (ctx === 'liked') return state.fav;
   if (ctx === 'recent') return state.recent;
   if (ctx === 'chartID') return state.charts.ID || [];
@@ -312,6 +318,7 @@ const VIEW_TITLES = { liked: 'Liked Songs', recent: 'Baru diputar', chartID: 'Ta
 
 function viewHTML() {
   const ctx = state.view.ctx;
+  if (ctx.startsWith('artist:')) return artistViewHTML(ctx.slice(7));
   const isPl = ctx.startsWith('pl:');
   const pl = isPl ? state.playlists.find((p) => p.id === ctx.slice(3)) : null;
   if (isPl && !pl) { state.view = null; return state.tab === 'library' ? libraryHTML() : homeHTML(); }
@@ -384,8 +391,9 @@ function renderNavbar() {
   const nb = $('#navbar'); let html = '';
   if (state.view) {
     const ctx = state.view.ctx, pl = ctx.startsWith('pl:') ? state.playlists.find((p) => p.id === ctx.slice(3)) : null;
-    const kind = pl ? 'Playlist' : ctx === 'liked' ? 'Koleksi' : ctx === 'recent' ? 'Riwayat' : 'Tangga lagu';
-    html = `<button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><div class="nt"><small>${kind}</small><b>${esc(pl ? pl.name : VIEW_TITLES[ctx] || '')}</b></div>`;
+    const isArt = ctx.startsWith('artist:');
+    const kind = isArt ? 'Artis' : pl ? 'Playlist' : ctx === 'liked' ? 'Koleksi' : ctx === 'recent' ? 'Riwayat' : 'Tangga lagu';
+    html = `<button class="icon-btn" data-nav data-back aria-label="Kembali">${ICON.back}</button><div class="nt"><small>${kind}</small><b>${esc(isArt ? ctx.slice(7) : pl ? pl.name : VIEW_TITLES[ctx] || '')}</b></div>`;
   } else if (state.tab === 'search' && state.sMode === 'results') {
     const title = state.genre || (state.q && !/^https?:/i.test(state.q) ? state.q : 'Hasil pencarian');
     html = `<button class="icon-btn" data-nav data-sback aria-label="Kembali ke pilihan genre">${ICON.back}</button><div class="nt"><small>${state.genre ? 'Genre' : 'Hasil pencarian'}</small><b>${esc(title)}</b></div>`;
@@ -431,7 +439,7 @@ function renderPlayer() {
   const t = current();
   $('#mini').hidden = !t;
   $('#player').classList.toggle('idle', !t);
-  renderUpnext();
+  renderUpnext(); renderQBadge();
   if (!t) return;
   $('#title').textContent = t.title;
   $('#artist').textContent = t.artist;
@@ -491,7 +499,7 @@ function closeView() { state.view = null; state.confirmDel = false; render(); }
 let navPushed = 0, navSilent = false;
 const navLayers = () => {
   const full = document.documentElement.dataset.layout !== 'desktop' && !document.documentElement.classList.contains('tv');
-  return (!$('#menu').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab === 'search' && state.sMode === 'results' ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
+  return (!$('#menu').hidden ? 1 : 0) + (!$('#queueSheet').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab === 'search' && state.sMode === 'results' ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
 };
 function navSync() {
   const n = navLayers();
@@ -504,12 +512,14 @@ window.addEventListener('popstate', () => {
   if (navSilent) { navSilent = false; return; }
   if (navPushed > 0) navPushed--;
   if (!$('#menu').hidden) closeMenu();
+  else if (!$('#queueSheet').hidden) closeQueue();
   else if ($('#player').classList.contains('open') && document.documentElement.dataset.layout !== 'desktop') $('#player').classList.remove('open');
   else if (state.view) closeView();
   else if (state.tab === 'search' && state.sMode === 'results') searchBack();
   else if (state.tab !== 'home') setTab('home');
 });
 new MutationObserver(navSync).observe($('#player'), { attributes: true, attributeFilter: ['class'] });
+new MutationObserver(navSync).observe($('#queueSheet'), { attributes: true, attributeFilter: ['hidden'] });
 new MutationObserver(navSync).observe($('#menu'), { attributes: true, attributeFilter: ['hidden'] });
 
 /* geser dari tepi kiri layar = kembali (iPhone standalone tidak punya gesture ini) */
@@ -549,7 +559,7 @@ function loadCharts() {
   for (const key of ['ID', 'GLOBAL']) {
     if (state.charts[key]) continue;
     let cached = null;
-    try { const c = JSON.parse(sessionStorage.getItem('chart' + key)); if (c && Date.now() - c.t < 3600e3) cached = c.items; } catch {}
+    cached = apiCache.get('chart' + key, 3 * 3600e3);
     if (cached) { state.charts[key] = cached; continue; }
     state.charts.err[key] = '';
     fetch(`/api/charts?region=${key}`)
@@ -557,9 +567,9 @@ function loadCharts() {
       .then(({ ok, d }) => {
         if (!ok) throw new Error(d.error || 'Yah, tangga lagunya gagal dimuat.');
         state.charts[key] = d.items || [];
-        try { sessionStorage.setItem('chart' + key, JSON.stringify({ t: Date.now(), items: state.charts[key] })); } catch {}
+        if (state.charts[key].length) apiCache.set('chart' + key, state.charts[key]);
       })
-      .catch((e) => { state.charts.err[key] = e.message || 'Yah, tangga lagunya gagal dimuat.'; })
+      .catch((e) => { const old = apiCache.stale('chart' + key); if (old) state.charts[key] = old; else state.charts.err[key] = e.message || 'Yah, tangga lagunya gagal dimuat.'; })
       .finally(() => { if ((state.tab === 'home' || state.tab === 'library' || state.view) && !$('#list').matches(':active')) render(); });
   }
 }
@@ -591,9 +601,7 @@ async function search(q) {
       const d = await r.json();
       state.results = [{ id, title: d.title, artist: d.author_name.replace(/ - Topic$/, ''), thumb: thumb(id) }];
     } else {
-      const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&official=${state.official ? 1 : 0}`);
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(d.error || 'Pencarian gagal, coba lagi ya.');
+      const d = await searchApi(q);
       state.results = d.items;
       if (!d.items.length) {
         state.error = state.official
@@ -720,11 +728,21 @@ function renderMenu() {
   let h = '';
   if (mode === 'main') {
     h += act('like', ICON.heart, isFav(track.id) ? 'Hapus dari Liked Songs' : 'Tambah ke Liked Songs', isFav(track.id));
+    h += act('playnext', ICON.qnext, 'Putar berikutnya');
+    h += act('queueadd', ICON.qadd, 'Tambah ke antrean');
     h += act('toplaylist', ICON.list, 'Tambah ke playlist');
     h += act('follow', ICON.user, isFollowing(track.artist) ? `Unfollow ${track.artist}` : `Follow ${track.artist}`, isFollowing(track.artist));
-    h += act('artistsearch', ICON.search, `Cari lagu dari ${track.artist}`);
+    h += act('artistsearch', ICON.user, `Lihat halaman ${firstArtist(track.artist)}`);
     if (!document.documentElement.classList.contains('tv')) h += act('story', ICON.story, 'Bagikan ke Story');
     if (ctx && ctx.startsWith('pl:')) h += act('rmpl', ICON.trash, 'Hapus dari playlist ini');
+    h += act('close', ICON.back, 'Tutup');
+  } else if (mode === 'sleep') {
+    const S = state.sleep;
+    h += '<div class="sub">Timer tidur</div>';
+    if (S) h += `<p class="share-note">${S.mode === 'end' ? 'Musik berhenti setelah lagu ini selesai.' : 'Musik berhenti ' + fmt(Math.max(0, (S.at - Date.now()) / 1000)) + ' lagi.'}</p>`;
+    h += [15, 30, 45, 60].map((m) => act('sleepset', ICON.clock, `${m} menit`, S && S.mode === 'time' && Math.round((S.at - S.set) / 60000) === m, `data-v="${m}"`)).join('');
+    h += act('sleepset', ICON.clock, 'Sampai lagu ini selesai', S && S.mode === 'end', 'data-v="end"');
+    if (S) h += act('sleepset', ICON.trash, 'Matikan timer', false, 'data-v="off"');
     h += act('close', ICON.back, 'Tutup');
   } else if (mode === 'pl') {
     h += '<div class="sub">Pilih playlist</div>';
@@ -969,7 +987,10 @@ $('#menu').addEventListener('click', (e) => {
   else if (a === 'backmain') { mctx.mode = 'main'; renderMenu(); $('#menuBody button')?.focus(); }
   else if (a === 'addpl') { addToPlaylist(b.dataset.pid, track); closeMenu(); render(); }
   else if (a === 'follow') { toggleArtist(track); closeMenu(); render(); }
-  else if (a === 'artistsearch') { closeMenu(); runSearch(track.artist); }
+  else if (a === 'artistsearch') { closeMenu(); openArtist(track.artist); }
+  else if (a === 'playnext') { closeMenu(); playNext(track); }
+  else if (a === 'queueadd') { closeMenu(); addToQueue(track); }
+  else if (a === 'sleepset') { closeMenu(); setSleep(b.dataset.v === 'end' || b.dataset.v === 'off' ? b.dataset.v : +b.dataset.v); }
   else if (a === 'rmpl') {
     const p = state.playlists.find((x) => x.id === ctx.slice(3));
     if (p) { p.tracks = p.tracks.filter((x) => x.id !== track.id); store.set('playlists', state.playlists); toast('Udah dihapus dari playlist'); }
@@ -1061,7 +1082,7 @@ function setPlaying(v) {
   if ('mediaSession' in navigator) navigator.mediaSession.playbackState = v ? 'playing' : 'paused';
 }
 
-function playList(list, i) { state.queue = list.slice(); state.idx = i; load(0); }
+function playList(list, i) { state.queue = list.slice(); state.idx = i; state.userQ = 0; load(0); }
 
 function load(start = 0) {
   const t = current(); if (!t) return;
@@ -1081,7 +1102,9 @@ function toggle() { state.playing ? pauseYT() : playYT(); }
 
 function next(auto = false) {
   const n = state.queue.length; if (!n) return;
+  if (auto && state.sleep && state.sleep.mode === 'end') { sleepFire(); return; }
   if (auto && state.repeat === 'one') { yt.seekTo(0, true); yt.playVideo(); return; }
+  if (state.userQ > 0 && state.idx + 1 < n) { state.idx++; state.userQ--; load(0); return; }
   if (state.shuffle && n > 1) {
     let r; do { r = Math.floor(Math.random() * n); } while (r === state.idx);
     state.idx = r;
@@ -1095,6 +1118,7 @@ function prev() {
   if (!state.queue.length) return;
   if (ytReady && yt.getCurrentTime() > 3) { yt.seekTo(0, true); return; }
   state.idx = (state.idx - 1 + state.queue.length) % state.queue.length;
+  state.userQ = Math.min(state.userQ, state.queue.length - state.idx - 1);
   load(0);
 }
 
@@ -1102,7 +1126,7 @@ function resume() {
   const r = state.resume; if (!r || !r.track) return;
   const q = (r.queue && r.queue.length ? r.queue : [r.track]);
   const i = q.findIndex((t) => t.id === r.track.id);
-  state.queue = q; state.idx = i >= 0 ? i : 0;
+  state.queue = q; state.idx = i >= 0 ? i : 0; state.userQ = 0;
   load(r.pos || 0);
 }
 
@@ -1315,12 +1339,13 @@ $('#list').addEventListener('click', (e) => {
   if ((el = t.closest('[data-open]'))) { openView(el.dataset.open); return; }
   if ((el = t.closest('[data-pl]'))) { openView('pl:' + el.dataset.pl); return; }
   if (t.closest('[data-manageart]')) { openMenu(null, null, 'artists'); return; }
-  if ((el = t.closest('[data-followart]'))) { const n = el.dataset.followart; if (isFollowing(n)) { unfollowArtist(n); } else followArtist(n, el.closest('.artist')?.querySelector('img')?.src || ''); render(); return; }
+  if ((el = t.closest('[data-followart]'))) { const n = el.dataset.followart; if (isFollowing(n)) { unfollowArtist(n); } else followArtist(n, el.closest('.artist')?.querySelector('img')?.src || el.dataset.thumb || ''); render(); return; }
+  if ((el = t.closest('[data-artretry]'))) { loadArtist(el.dataset.artretry, true); render(); return; }
   if (t.closest('[data-sback]')) { searchBack(); return; }
   if ((el = t.closest('[data-genre]'))) { runGenre(+el.dataset.genre); return; }
   if ((el = t.closest('[data-q]'))) { runSearch(el.dataset.q); return; }
   if (t.closest('[data-clearhist]')) { state.history = []; store.set('history', []); render(); return; }
-  if ((el = t.closest('[data-artist]'))) { runSearch(el.dataset.artist); return; }
+  if ((el = t.closest('[data-artist]'))) { openArtist(el.dataset.artist); return; }
   if ((el = t.closest('[data-share]'))) { openShare(el.dataset.share); return; }
   if (t.closest('[data-import]')) { openMenu(null, null, 'import'); return; }
   if (t.closest('[data-newpl]')) { openMenu(null, null, 'newpl'); return; }
@@ -1448,7 +1473,7 @@ function seekBy(sec) {
 const visible = (el) => el.getClientRects().length > 0;
 function focusables() {
   if (!$('#menu').hidden) return [...document.querySelectorAll('#menu button, #menu input')].filter(visible);
-  return [...document.querySelectorAll('.tabs button, #navbar [data-nav], #q, #officialBtn, #suggest button, #list [data-nav], #pvVideo, #pvLyrics, #upnext [data-nav], #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
+  return [...document.querySelectorAll('.tabs button, #navbar [data-nav], #q, #officialBtn, #suggest button, #list [data-nav], #pvVideo, #pvLyrics, #qBtn, #sleepBtn, #artBtn, #queueSheet [data-nav], #upnext [data-nav], #seek, #prev, #play, #next, #shuffle, #repeat, #favBtn, #moreBtn')].filter(visible);
 }
 
 // Navigasi spasial: pindah fokus ke elemen terdekat pada arah panah
@@ -1492,6 +1517,7 @@ document.addEventListener('keydown', (e) => {
 
   if (k === 'Escape' || (state.tv && (k === 'Backspace' || k === 'GoBack' || kc === 10009 || kc === 461) && !typing)) {
     if (!$('#menu').hidden) { e.preventDefault(); closeMenu(); return; }
+    if (!$('#queueSheet').hidden) { e.preventDefault(); closeQueue(); return; }
     if (!$('#suggest').hidden) { e.preventDefault(); hideSuggest(); $('#q').blur(); return; }
     if (typing) { t.blur(); return; }
     if (state.tv) { e.preventDefault(); if (state.view) closeView(); else $(`.tabs [data-tab="${state.tab}"]`)?.focus(); return; }
@@ -1527,6 +1553,239 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'ArrowLeft' && !t.matches('input')) seekBy(-5);
 });
 
+
+/* =====================================================================
+   CACHE API: hasil pencarian/genre/tangga lagu disimpan di perangkat supaya cepat dan hemat kuota
+   ===================================================================== */
+const apiCache = {
+  KEY: 'nada.cache.v1', MAX: 40, m: store.get('nada.cache.v1', {}),
+  get(k, ttl) { const e = this.m[k]; return e && Date.now() - e.t < ttl ? e.v : null; },
+  stale(k) { const e = this.m[k]; return e ? e.v : null; },
+  set(k, v) {
+    this.m[k] = { t: Date.now(), v };
+    const keys = Object.keys(this.m);
+    if (keys.length > this.MAX) keys.sort((a, b) => this.m[a].t - this.m[b].t).slice(0, keys.length - this.MAX).forEach((x) => delete this.m[x]);
+    try { localStorage.setItem(this.KEY, JSON.stringify(this.m)); }
+    catch { Object.keys(this.m).sort((a, b) => this.m[a].t - this.m[b].t).slice(0, 15).forEach((x) => delete this.m[x]); store.set(this.KEY, this.m); }
+  },
+};
+const inflight = new Map();
+async function searchApi(q, official = state.official) {
+  const key = `s:${official ? 1 : 0}:${lc(q).trim()}`;
+  const hit = apiCache.get(key, 6 * 3600e3);
+  if (hit) return hit;
+  if (inflight.has(key)) return inflight.get(key);
+  const pr = (async () => {
+    try {
+      const r = await fetch(`/api/search?q=${encodeURIComponent(q)}&official=${official ? 1 : 0}`);
+      const d = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(d.error || 'Pencarian gagal, coba lagi ya.');
+      const val = { items: d.items || [] };
+      if (val.items.length) apiCache.set(key, val);
+      return val;
+    } catch (e) {
+      const old = apiCache.stale(key);   // kuota habis / offline: pakai hasil lama daripada kosong
+      if (old) return old;
+      throw e;
+    } finally { inflight.delete(key); }
+  })();
+  inflight.set(key, pr);
+  return pr;
+}
+
+/* =====================================================================
+   ANTREAN
+   ===================================================================== */
+const firstArtist = (a = '') => (String(a).split(/\s*(?:,|&| feat\.?| ft\.?| x )\s*/i)[0] || a).trim();
+
+function qChanged() {
+  state.userQ = Math.max(0, Math.min(state.userQ, state.queue.length - state.idx - 1));
+  renderQBadge(); renderUpnext(); renderPeek();
+  if (!$('#queueSheet').hidden) renderQueueSheet();
+}
+function removeUpcoming(id) {
+  for (let i = state.queue.length - 1; i > state.idx; i--) {
+    if (state.queue[i].id === id) { state.queue.splice(i, 1); if (i <= state.idx + state.userQ) state.userQ--; }
+  }
+}
+function playNext(t) {
+  t = slim(t);
+  if (!current()) { playList([t], 0); toast('Langsung diputar'); return; }
+  removeUpcoming(t.id);
+  state.queue.splice(state.idx + 1, 0, t); state.userQ++;
+  qChanged(); toast('Diputar setelah lagu ini');
+}
+function addToQueue(t) {
+  t = slim(t);
+  if (!current()) { playList([t], 0); toast('Langsung diputar'); return; }
+  removeUpcoming(t.id);
+  state.queue.splice(state.idx + 1 + state.userQ, 0, t); state.userQ++;
+  qChanged(); toast(`Masuk antrean, urutan ke-${state.userQ}`);
+}
+function removeAt(i) {
+  if (i <= state.idx || i >= state.queue.length) return;
+  const gone = state.queue.splice(i, 1)[0];
+  if (i <= state.idx + state.userQ) state.userQ--;
+  qChanged(); toast(`${gone.title} dihapus dari antrean`);
+}
+function moveQueue(from, to) {
+  if (from <= state.idx || to <= state.idx || from === to || from >= state.queue.length || to >= state.queue.length) return;
+  const wasUser = from <= state.idx + state.userQ;
+  const [it] = state.queue.splice(from, 1);
+  state.queue.splice(to, 0, it);
+  const base = state.userQ - (wasUser ? 1 : 0);
+  state.userQ = base + (to <= state.idx + base + 1 ? 1 : 0);
+  qChanged();
+}
+function jumpTo(i) {
+  if (i <= state.idx || i >= state.queue.length) return;
+  state.userQ = Math.max(0, state.userQ - (i - state.idx)); state.idx = i; load(0); qChanged();
+}
+function clearUserQueue() {
+  if (!state.userQ) return;
+  state.queue.splice(state.idx + 1, state.userQ); state.userQ = 0; qChanged(); toast('Antrean dikosongkan');
+}
+function renderQBadge() {
+  const c = $('#qCount'); c.textContent = state.userQ; c.hidden = !state.userQ;
+  $('#qBtn').classList.toggle('on', state.userQ > 0);
+}
+
+const GRIP = '<svg viewBox="0 0 24 24"><circle cx="9" cy="7" r="1.3"/><circle cx="15" cy="7" r="1.3"/><circle cx="9" cy="12" r="1.3"/><circle cx="15" cy="12" r="1.3"/><circle cx="9" cy="17" r="1.3"/><circle cx="15" cy="17" r="1.3"/></svg>';
+const qRow = (t, i) => `<div class="qr" data-qi="${i}"><button class="qh" type="button" tabindex="-1" aria-label="Geser untuk mengurutkan">${GRIP}</button>
+  <div class="qm" data-nav tabindex="0" role="button" data-qplay="${i}" aria-label="Putar ${esc(t.title)}"><img src="${imgOf(t)}" alt="" loading="lazy"><span class="meta"><b>${esc(t.title)}</b><small>${esc(t.artist)}</small></span></div>
+  <button class="qx" type="button" data-nav data-qdel="${i}" aria-label="Hapus ${esc(t.title)} dari antrean"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>`;
+
+function renderQueueSheet() {
+  const q = state.queue, cur = current(), body = $('#qsBody');
+  const user = [], rest = [];
+  for (let i = state.idx + 1; i < q.length; i++) (i <= state.idx + state.userQ ? user : rest).push(i);
+  $('#qsClear').hidden = !state.userQ;
+  $('#qsSub').textContent = cur ? `${user.length} antrean kamu · ${rest.length} berikutnya` : '';
+  if (!cur) { body.innerHTML = '<div class="empty sm"><b>Antrean masih kosong</b>Putar lagu dulu, terus tambahin lagu lain lewat menu titik tiga: "Putar berikutnya" atau "Tambah ke antrean".</div>'; return; }
+  let h = `<div class="q-sec">Sedang diputar</div><div class="qnow"><img src="${imgOf(cur)}" alt=""><span class="meta"><b>${esc(cur.title)}</b><small>${esc(cur.artist)}</small></span><span class="eqb static" aria-hidden="true"><i></i><i></i><i></i></span></div>`;
+  if (user.length) h += `<div class="q-sec">Antrean kamu<em>${user.length}</em></div>` + user.map((i) => qRow(q[i], i)).join('');
+  h += `<div class="q-sec">Berikutnya${state.shuffle ? '<em class="shf">acak</em>' : ''}</div>`;
+  h += rest.length ? rest.slice(0, 60).map((i) => qRow(q[i], i)).join('') : '<p class="q-end">Habis di sini. Aktifkan ulangi, atau tambahin lagu lewat menu titik tiga.</p>';
+  if (state.shuffle && rest.length) h += '<p class="q-end">Mode acak aktif, urutan di atas bisa berubah saat diputar.</p>';
+  body.innerHTML = h;
+}
+function openQueue() { $('#queueSheet').hidden = false; renderQueueSheet(); $('#qsClose').focus(); }
+function closeQueue() { $('#queueSheet').hidden = true; }
+$('#qBtn').addEventListener('click', openQueue);
+$('#qsClose').addEventListener('click', closeQueue);
+$('#qsClear').addEventListener('click', clearUserQueue);
+$('#queueSheet').addEventListener('click', (e) => { if (e.target === $('#queueSheet')) closeQueue(); });
+$('#qsBody').addEventListener('click', (e) => {
+  const d = e.target.closest('[data-qdel]'); if (d) { removeAt(+d.dataset.qdel); return; }
+  const p = e.target.closest('[data-qplay]'); if (p) jumpTo(+p.dataset.qplay);
+});
+/* seret untuk mengurutkan */
+(function () {
+  let g = null; const body = $('#qsBody');
+  const reset = () => { if (!g) return; g.row.classList.remove('drag'); g.row.style.transform = ''; body.querySelectorAll('.tgt-up,.tgt-down').forEach((r) => r.classList.remove('tgt-up', 'tgt-down')); g = null; };
+  body.addEventListener('pointerdown', (e) => {
+    const h = e.target.closest('.qh'); if (!h) return;
+    e.preventDefault(); h.setPointerCapture(e.pointerId);
+    const rows = [...body.querySelectorAll('.qr')], row = h.closest('.qr');
+    g = { row, rows, from: +row.dataset.qi, over: +row.dataset.qi, y0: e.clientY, centers: rows.map((r) => { const b = r.getBoundingClientRect(); return b.top + b.height / 2; }), sc0: body.scrollTop };
+    row.classList.add('drag');
+  });
+  body.addEventListener('pointermove', (e) => {
+    if (!g) return;
+    const dy = e.clientY - g.y0 + (body.scrollTop - g.sc0);
+    g.row.style.transform = `translateY(${dy}px)`;
+    const c = g.centers[g.rows.indexOf(g.row)] + dy;
+    let best = 0, bd = 1e9; g.centers.forEach((v, k) => { const d = Math.abs(v - c); if (d < bd) { bd = d; best = k; } });
+    g.over = +g.rows[best].dataset.qi;
+    g.rows.forEach((r) => { const qi = +r.dataset.qi; r.classList.toggle('tgt-up', r !== g.row && qi === g.over && g.over < g.from); r.classList.toggle('tgt-down', r !== g.row && qi === g.over && g.over > g.from); });
+    const bb = body.getBoundingClientRect();
+    if (e.clientY < bb.top + 40) body.scrollTop -= 8; else if (e.clientY > bb.bottom - 40) body.scrollTop += 8;
+  });
+  const end = () => { if (!g) return; const { from, over } = g; reset(); if (over !== from) moveQueue(from, over); };
+  body.addEventListener('pointerup', end); body.addEventListener('pointercancel', reset);
+})();
+
+/* =====================================================================
+   TIMER TIDUR
+   ===================================================================== */
+function setVol(v) { try { if (ytReady && yt.setVolume) yt.setVolume(v); } catch {} }
+function renderSleep() {
+  const S = state.sleep, t = $('#sleepTxt'), b = $('#sleepBtn');
+  b.classList.toggle('on', !!S);
+  t.textContent = !S ? 'Tidur' : S.mode === 'end' ? 'Akhir lagu' : fmt(Math.max(0, (S.at - Date.now()) / 1000));
+}
+function setSleep(v) {
+  setVol(100);
+  if (v === 'off') { state.sleep = null; toast('Timer tidur dimatikan'); }
+  else if (v === 'end') { state.sleep = { mode: 'end' }; toast('Musik berhenti setelah lagu ini'); }
+  else { state.sleep = { mode: 'time', at: Date.now() + v * 60000, set: Date.now() }; toast(`Musik berhenti ${v} menit lagi`); }
+  renderSleep();
+}
+function sleepFire() {
+  state.sleep = null; state.want = false; renderSleep();
+  try { if (ytReady) yt.pauseVideo(); } catch {}
+  keep.stop(); setPlaying(false);
+  setTimeout(() => setVol(100), 800);
+  toast('Timer tidur selesai. Selamat istirahat!');
+}
+function sleepTick() {
+  const S = state.sleep; if (!S) return;
+  renderSleep();
+  if (S.mode !== 'time') return;
+  const left = S.at - Date.now();
+  if (left <= 0) { sleepFire(); return; }
+  if (left < 8000 && state.playing) setVol(Math.max(2, Math.round((left / 8000) * 100)));   // pelan-pelan mengecil
+}
+setInterval(sleepTick, 1000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) sleepTick(); });
+$('#sleepBtn').addEventListener('click', () => openMenu(null, null, 'sleep'));
+
+/* =====================================================================
+   HALAMAN ARTIS
+   ===================================================================== */
+function artistTracks(name) { const d = state.artistData[lc(name)]; return d ? d.tracks : []; }
+function openArtist(name) {
+  name = firstArtist(name || ''); if (!name) return;
+  $('#player').classList.remove('open'); closeQueue();
+  openView('artist:' + name);
+  loadArtist(name);
+}
+async function loadArtist(name, force) {
+  const k = lc(name), cur = state.artistData[k];
+  if (cur && (cur.status === 'ok' || cur.status === 'loading') && !force) return;
+  state.artistData[k] = { status: 'loading', tracks: [] };
+  try {
+    const d = await searchApi(name, true);
+    const n = lc(name);
+    let mine = (d.items || []).filter((t) => { const a = lc(t.artist); return a && (a.includes(n) || n.includes(a)); });
+    if (mine.length < 5) mine = d.items || [];
+    state.artistData[k] = { status: mine.length ? 'ok' : 'none', tracks: mine };
+    mine.forEach(backfillArtist);
+  } catch (e) { state.artistData[k] = { status: 'err', tracks: [], msg: e.message }; }
+  if (state.view && state.view.ctx === 'artist:' + name) render();
+}
+function artistViewHTML(name) {
+  const ctx = 'artist:' + name, d = state.artistData[lc(name)] || { status: 'loading', tracks: [] }, tracks = d.tracks, n = tracks.length;
+  const fol = state.artists.find((a) => lc(a.name) === lc(name));
+  const thumbUrl = (fol && fol.thumb) || (tracks[0] && (tracks[0].thumb || thumb(tracks[0].id))) || '';
+  const f = isFollowing(name);
+  let body;
+  if (d.status === 'loading') body = '<div class="skeleton"></div>'.repeat(6);
+  else if (d.status === 'err') body = `<div class="empty"><b>Ups</b>${esc(d.msg || 'Gagal memuat lagu artis ini.')}<br><button class="pill big" data-nav data-artretry="${esc(name)}" style="margin-top:1rem">Coba lagi</button></div>`;
+  else if (!n) body = '<div class="empty"><b>Belum ketemu lagunya</b>Coba cari nama artisnya di kolom pencarian.</div>';
+  else body = tracks.map((t, i) => rowHTML(t, i, ctx)).join('');
+  return `<div class="vhero artist-hero">
+    <div class="aav">${avatar({ name, thumb: thumbUrl })}</div>
+    <div class="vinfo"><small class="vkind">Artis</small><h2>${esc(name)}</h2>
+      <p class="vsub">${d.status === 'loading' ? 'Lagi nyari lagunya…' : n ? `${n} lagu${f ? ' · Kamu follow' : ''}` : ''}</p>
+      <div class="vact">
+        ${n ? `<button class="pill big" data-nav data-playall="${esc(ctx)}">${ICON.play}<span>Putar</span></button><button class="pill ghost big" data-nav data-shuffleall="${esc(ctx)}">${ICON.shuffle}<span>Acak</span></button>` : ''}
+        <button class="pill ghost big fbtn${f ? ' on' : ''}" data-nav data-followart="${esc(name)}" data-thumb="${esc(thumbUrl)}" aria-pressed="${f}">${f ? 'Difollow' : '+ Follow'}</button>
+      </div></div></div><div class="tracks">${body}</div>`;
+}
+$('#artBtn').addEventListener('click', () => { const t = current(); if (t) openArtist(t.artist); else toast('Putar lagu dulu ya'); });
+$('#artist').addEventListener('click', () => { const t = current(); if (t) openArtist(t.artist); });
+
 /* ---------- init ---------- */
 /* tautan lagu (/s/ID -> /?t=ID): langsung pilih lagunya dan buka pemutar */
 async function openSongFromLink() {
@@ -1536,7 +1795,7 @@ async function openSongFromLink() {
   try {
     const r = await fetch('/api/videos?ids=' + id); const d = await r.json();
     const t = d.items && d.items[0] ? slim(d.items[0]) : { id, title: 'Lagu dari temanmu', artist: 'Nada' };
-    state.queue = [t]; state.idx = 0; load(0);
+    state.queue = [t]; state.idx = 0; state.userQ = 0; load(0);
     $('#player').classList.add('open');
     toast('Lagu dari temanmu. Tap putar buat mulai!');
   } catch { toast('Lagunya nggak bisa dibuka, coba lagi ya'); }
@@ -1548,7 +1807,7 @@ if (/[#?&](c|code|share)=/.test(location.hash)) {
   try { history.replaceState(null, '', location.pathname + location.search); } catch {}
   setTimeout(() => { openMenu(null, null, 'import'); importFrom(linkText); }, 300);
 }
-applyLayout(); setPview(state.pview); updateOfficialBtn(); renderControls(); render();
+renderQBadge(); renderSleep(); applyLayout(); setPview(state.pview); updateOfficialBtn(); renderControls(); render();
 if (state.tab === 'home' || state.tab === 'library') loadCharts();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
