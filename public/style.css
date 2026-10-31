@@ -934,3 +934,44 @@ html.tv .q-card{max-width:42rem}
 .karaoke button:focus-visible{outline:2px solid #fff;outline-offset:3px}
 html.tv .k-l.c0{font-size:3.5rem}html.tv .k-l{font-size:2.25rem}
 html[data-layout=desktop] .k-lines,html[data-layout=tablet] .k-lines{padding:0 12%}
+
+/* ================= Pemutar v2: tampilan lebih lega, mode Lirik tanpa video ================= */
+.sheet{padding-left:1.25rem;padding-right:1.25rem}
+.sheet-head{padding:.125rem 0}
+.sheet-head .icon-btn{width:2.5rem;height:2.5rem;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;color:var(--text)}
+.sheet-head span:nth-child(2){font-size:.75rem;letter-spacing:.12em;color:rgba(255,255,255,.7)}
+.video{border-radius:1.25rem;box-shadow:0 1.25rem 3rem -.5rem rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.06)}
+.peek{margin-top:.75rem;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.06)}
+.info{gap:.75rem;margin-bottom:.25rem}
+.info h2{font-size:1.5rem;font-weight:800;letter-spacing:-.02em}
+.info p{font-size:.9375rem}
+.info .heart{width:2.75rem;height:2.75rem;border-radius:50%;background:rgba(255,255,255,.08);display:grid;place-items:center;flex:none}
+.info .heart.on{background:rgba(255,79,109,.18)}
+.seek{margin:.875rem 0 .125rem}
+input[type=range]::-webkit-slider-runnable-track{height:.3125rem;border-radius:.2rem}
+input[type=range]::-webkit-slider-thumb{width:1.125rem;height:1.125rem;margin-top:-.4rem;box-shadow:0 .125rem .5rem rgba(0,0,0,.5)}
+.controls{margin:.375rem 0 .25rem}
+.controls #prev,.controls #next{width:3.25rem;height:3.25rem}
+.controls #prev svg,.controls #next svg{width:1.75rem;height:1.75rem}
+.play-btn{width:4.75rem;height:4.75rem;box-shadow:0 .75rem 2rem -.25rem rgba(255,79,109,.65),0 0 0 .5rem rgba(255,79,109,.12)}
+.play-btn:active{transform:scale(.95)}
+.extras{margin:.625rem 0 0}
+
+/* Mode Lirik: hanya lirik. Video tetap dimuat tapi tersembunyi di belakang (suara tetap jalan). */
+.sheet[data-pview="lyrics"] .video,
+html[data-layout="desktop"] .sheet[data-pview="lyrics"] .video,
+html.tv .sheet[data-pview="lyrics"] .video{position:fixed;left:0;top:0;width:200px;height:200px;min-height:0;aspect-ratio:auto;margin:0;border-radius:0;box-shadow:none;opacity:.02;pointer-events:none;z-index:-1}
+.sheet[data-pview="lyrics"] .stage{position:relative;flex:1 1 0;margin:.5rem -.25rem 0;padding:0 .25rem;
+  -webkit-mask-image:linear-gradient(transparent 0,#000 7%,#000 86%,transparent 100%);mask-image:linear-gradient(transparent 0,#000 7%,#000 86%,transparent 100%)}
+.sheet[data-pview="lyrics"] .lyrics{padding:1.25rem .25rem 45vh}
+.sheet[data-pview="lyrics"] .lyrics p{font-size:1.625rem;line-height:1.25;letter-spacing:-.02em;padding:.5rem 0;color:rgba(255,255,255,.32)}
+.sheet[data-pview="lyrics"] .lyrics p.on{color:#fff;transform:scale(1.03);text-shadow:0 .25rem 1.5rem rgba(255,255,255,.18)}
+.sheet[data-pview="lyrics"] .lyrics p.gap{font-size:1.25rem;padding:.25rem 0}
+.sheet[data-pview="lyrics"] .lyrics.plain p{font-size:1.125rem;font-weight:500;color:rgba(255,255,255,.85);padding:.25rem 0}
+.sheet[data-pview="lyrics"] #pbg i{opacity:.62}
+.sheet[data-pview="lyrics"] .info{padding-top:.25rem}
+.sheet[data-pview="lyrics"] .info h2{font-size:1.125rem;font-weight:700}
+html[data-layout="desktop"] .sheet[data-pview="lyrics"] .stage{display:block;overflow-y:auto;flex:1 1 0;-webkit-mask-image:linear-gradient(transparent 0,#000 7%,#000 86%,transparent 100%);mask-image:linear-gradient(transparent 0,#000 7%,#000 86%,transparent 100%)}
+html[data-layout="desktop"] .sheet[data-pview="lyrics"] .lyrics{overflow:visible;padding-bottom:30vh}
+html.tv .sheet[data-pview="lyrics"] .lyrics p{font-size:1.5rem}
+@media (max-height:700px){.sheet[data-pview="lyrics"] .lyrics p{font-size:1.5rem}.play-btn{width:4rem;height:4rem}}
