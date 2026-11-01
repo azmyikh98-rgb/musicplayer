@@ -982,3 +982,7 @@ html.tv .sheet[data-pview="lyrics"] .lyrics p{font-size:1.5rem}
 .sheet[data-pview="lyrics"] .lyrics p.on{color:#fff;transform:scale(1.04)}
 .sheet[data-pview="lyrics"] .lyrics p{transform-origin:left center}
 @media (prefers-reduced-motion:reduce){.lyrics p{transition:color .2s}}
+
+.lyrics .ly-note{padding:.75rem .875rem;margin:0 0 .75rem;border-radius:.875rem;background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);font-size:.8125rem;line-height:1.4;cursor:default}
+.lyrics .ly-note b{color:#fff}
+.lyrics .ly-note .ly-retry{display:inline-block;margin-top:.5rem}

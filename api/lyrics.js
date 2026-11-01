@@ -75,6 +75,27 @@ async function ovh(artist, title, ms = 4500) {
   return text.length > 40 ? [{ trackName: title, artistName: artist, duration: 0, plainLyrics: text, _src: 'lyrics.ovh' }] : [];
 }
 
+
+// NetEase Cloud Music: sumber tambahan lirik tersinkron (API tidak resmi; kalau gagal diabaikan saja)
+const NE_H = { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36', Referer: 'https://music.163.com/', Cookie: 'appver=2.0.2' };
+async function netease(artist, title, ms = 4500) {
+  const q = `${title} ${artist}`.trim();
+  const r = await fetch('https://music.163.com/api/search/get/web?' + new URLSearchParams({ s: q, type: '1', offset: '0', total: 'true', limit: '6' }), { headers: NE_H, signal: AbortSignal.timeout(ms) });
+  if (!r.ok) throw new Error('netease ' + r.status);
+  const j = await r.json().catch(() => null);
+  const songs = ((j && j.result && j.result.songs) || []).filter((x) => dice(x.name, title) >= 0.55).slice(0, 3);
+  const out = await Promise.all(songs.map(async (x) => {
+    try {
+      const lr2 = await fetch(`https://music.163.com/api/song/lyric?id=${x.id}&lv=1&kv=1&tv=-1`, { headers: NE_H, signal: AbortSignal.timeout(ms) });
+      const d = await lr2.json();
+      const lrc = d && d.lrc && d.lrc.lyric; if (!lrc) return null;
+      const clean = lrc.split(/\r?\n/).filter((l) => !/^\[[\d:.]+\]\s*(作词|作曲|编曲|制作|制作人|词|曲|Lyrics?|Composer|Producer)\s*[:：]/i.test(l)).join('\n');
+      return { trackName: x.name, artistName: (x.artists || x.ar || []).map((a) => a.name).join(', '), duration: Math.round((x.duration || x.dt || 0) / 1000), syncedLyrics: clean, plainLyrics: '', _src: 'NetEase' };
+    } catch { return null; }
+  }));
+  return out.filter(Boolean);
+}
+
 // variasi judul/artis: judul YouTube sering berformat "Artis - Judul", dan nama kanal bisa berupa label
 function variants(rawTitle, title, artist) {
   const v = [[title, artist]];
@@ -95,15 +116,16 @@ async function collect(rawTitle, title, artist) {
   const vs = variants(rawTitle, title, artist);
   const jobs = [];
   vs.forEach(([t, a], i) => {
-    if (a) jobs.push(() => lr('search', { track_name: t, artist_name: a }));
-    jobs.push(() => lr('search', { q: `${t} ${a}`.trim() }));
+    if (a) jobs.push([() => lr('search', { track_name: t, artist_name: a }), true]);
+    jobs.push([() => lr('search', { q: `${t} ${a}`.trim() }), true]);
   });
   const fv = vs.find(([, a]) => a);
-  if (fv) jobs.push(() => ovh(fv[1], fv[0]));
+  if (fv) jobs.push([() => netease(fv[1], fv[0]), false]);   // sumber tambahan: kegagalannya tidak dianggap "layanan mati"
+  if (fv) jobs.push([() => ovh(fv[1], fv[0]), false]);
   let ok = 0, fail = 0; const all = [];
-  await Promise.all(jobs.map(async (job, i) => {
-    if (i >= 2 && i < jobs.length - 1 && left() < 1500) return;
-    try { const list = await job(); ok++; all.push(...list.slice(0, 25)); } catch { fail++; }
+  await Promise.all(jobs.map(async ([job, core], i) => {
+    if (core && i >= 2 && left() < 1500) return;
+    try { const list = await job(); if (core) ok++; all.push(...list.slice(0, 25)); } catch { if (core) fail++; }
   }));
   if (!ok && fail) throw new Error('lyrics sources down');
   const seen = new Set(), items = [];

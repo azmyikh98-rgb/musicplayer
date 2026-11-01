@@ -1410,9 +1410,10 @@ function renderLyrics() {
       + `${nv > 1 ? `<button type="button" data-lyver>Versi ${L.items.indexOf(L.items[L.sel]) + 1}/${nv}</button>` : ''}`
       + `${off ? '<button type="button" data-lyreset>Reset</button>' : ''}</div></div>`;
   }
-  const src = `<div class="ly-src"><span>Lirik dari ${esc(L.src || 'LRCLIB')}${L.synced.length ? '' : ' · tanpa penanda waktu, jadi digulir otomatis perkiraan'} · v${APP_V}</span></div>`;
+  const src = `<div class="ly-src"><span>Lirik dari ${esc(L.src || 'LRCLIB')}${L.synced.length ? ` · ${L.synced.length} baris tersinkron` : ''} · v${APP_V}</span></div>`;
   if (L.synced.length) el.innerHTML = bar + L.synced.map((l, i) => `<p data-ly="${i}" data-t="${l[0]}"${l[1] ? '' : ' class="gap"'}>${l[1] ? esc(l[1]) : '♪'}</p>`).join('') + src;
-  else el.innerHTML = L.plain.split(/\r?\n/).map((l) => (l.trim() ? `<p>${esc(l)}</p>` : '<p class="gap"></p>')).join('') + src;
+  else el.innerHTML = `<div class="ly-note"><b>Lirik ini belum punya penanda waktu.</b> Barisnya tidak bisa menyala mengikuti lagu, jadi hanya digulir otomatis perkiraan. <button type="button" class="ly-retry" data-lyretry>Cari versi tersinkron</button></div>`
+    + L.plain.split(/\r?\n/).map((l) => (l.trim() ? `<p>${esc(l)}</p>` : '<p class="gap"></p>')).join('') + src;
   L.active = -1;
 }
 
@@ -2052,7 +2053,7 @@ if (state.tab === 'home' || state.tab === 'library') loadCharts();
 /* ---------- Versi & pembaruan ----------
    Versi aplikasi dicek ke /version.json (tanpa cache). Kalau beda dengan yang berjalan, cache & service worker dibersihkan lalu
    aplikasi dimuat ulang otomatis. Tombol "Perbarui aplikasi" di Pustaka melakukan hal yang sama secara manual. */
-const APP_V = '2026.11.01-4';
+const APP_V = '2026.11.01-5';
 async function appUpdate(manual) {
   try {
     let latest = APP_V;
