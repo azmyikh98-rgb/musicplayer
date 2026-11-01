@@ -986,3 +986,35 @@ html.tv .sheet[data-pview="lyrics"] .lyrics p{font-size:1.5rem}
 .lyrics .ly-note{padding:.75rem .875rem;margin:0 0 .75rem;border-radius:.875rem;background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);font-size:.8125rem;line-height:1.4;cursor:default}
 .lyrics .ly-note b{color:#fff}
 .lyrics .ly-note .ly-retry{display:inline-block;margin-top:.5rem}
+
+/* Panel Sinkronkan lirik */
+.ly-sheet{position:fixed;inset:0;z-index:90;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.55);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.ly-sheet[hidden]{display:none}
+.lys-card{width:100%;max-width:32rem;max-height:86vh;overflow-y:auto;background:#17171f;border-radius:1.5rem 1.5rem 0 0;padding:1rem 1.125rem calc(1.25rem + env(safe-area-inset-bottom,0px));box-shadow:0 -1rem 3rem rgba(0,0,0,.6);animation:lysUp .25s cubic-bezier(.2,.8,.2,1)}
+@keyframes lysUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+.lys-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:.625rem}
+.lys-h b{font-size:1.0625rem}
+.lys-x{width:2.25rem;height:2.25rem;border-radius:50%;background:rgba(255,255,255,.08);color:var(--text);font-size:.9375rem}
+.lys-now{padding:.75rem .875rem;border-radius:.875rem;background:rgba(255,255,255,.07);margin-bottom:.875rem}
+.lys-now small{display:block;color:var(--muted);font-size:.6875rem;margin-bottom:.25rem}
+.lys-now b{display:block;font-size:1rem;line-height:1.3;color:#fff}
+.lys-sec{margin-bottom:1rem}
+.lys-lbl{display:flex;justify-content:space-between;font-size:.8125rem;font-weight:700;margin-bottom:.5rem;color:rgba(255,255,255,.85)}
+.lys-lbl em{font-style:normal;color:var(--accent)}
+.lys-range{width:100%}
+.lys-hint{display:flex;justify-content:space-between;font-size:.6875rem;color:var(--muted);margin:.25rem 0 .5rem}
+.lys-row{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0}
+.lys-row.sp{justify-content:space-between;margin-top:1rem}
+.lys-b{flex:1;min-width:4rem;padding:.625rem .75rem;border-radius:.875rem;background:rgba(255,255,255,.1);color:var(--text);font-size:.8125rem;font-weight:700}
+.lys-b.wide{width:100%;flex:none}
+.lys-b.pri,.ly-ctl .pri{background:var(--accent);color:#fff}
+.lys-p{color:var(--muted);font-size:.75rem;line-height:1.45;margin:.375rem 0 0}
+.lys-p b{color:rgba(255,255,255,.9)}
+.lys-ver{display:flex;justify-content:space-between;align-items:center;width:100%;padding:.625rem .75rem;margin-bottom:.375rem;border-radius:.875rem;background:rgba(255,255,255,.07);color:var(--text);font-size:.8125rem;text-align:left}
+.lys-ver span{color:var(--muted);font-size:.75rem}
+.lys-ver.on{outline:2px solid var(--accent);background:rgba(255,79,109,.12)}
+.lys-ta{width:100%;box-sizing:border-box;margin-top:.625rem;padding:.75rem;border-radius:.875rem;background:#0f0f15;color:var(--text);border:1px solid rgba(255,255,255,.1);font:inherit;font-size:.875rem;line-height:1.5;resize:vertical;min-height:11rem}
+.lys-cnt{font-size:.75rem;color:#7fd99a;margin-top:.375rem}
+.lys-cnt.warn{color:#ffb86b}
+.ly-ctl .pri{padding:.3rem .75rem}
+#kSync{font-size:.75rem}

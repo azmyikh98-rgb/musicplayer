@@ -400,6 +400,7 @@ setInterval(kTick, 150);
 document.addEventListener('visibilitychange', () => { if (!document.hidden && !kEl.hidden) kLock(); });
 $('#kBtn').addEventListener('click', () => { if (state.pview !== 'lyrics') setPview('lyrics'); openKaraoke(); });
 $('#kClose').addEventListener('click', closeKaraoke);
+$('#kSync').addEventListener('click', () => openLySheet());
 $('#kPlay').addEventListener('click', toggle);
 $('#kPrev').addEventListener('click', prev);
 $('#kNext').addEventListener('click', () => next());

@@ -1223,6 +1223,23 @@ const lyrDisk = {             // lirik ditemukan disimpan 30 hari (25 lagu terak
 let lyrUser = 0, lyrReq = 0, lyrTap = false;
 const lyrOffs = store.get('lyrOffs', {});   // geser waktu lirik per lagu (detik)
 const lyrOff = () => (current() && lyrOffs[current().id]) || 0;
+const lyrTxt = store.get('lyrTxt', {});   // teks lirik yang diubah pengguna: id -> { key, lines }
+function lyrSetOff(v) {
+  const t = current(); if (!t) return;
+  v = Math.max(-60, Math.min(60, Math.round(v * 10) / 10));
+  if (v) lyrOffs[t.id] = v; else delete lyrOffs[t.id];
+  const keys = Object.keys(lyrOffs); if (keys.length > 80) delete lyrOffs[keys[0]];
+  store.set('lyrOffs', lyrOffs); lyrTap = false;
+  const a = $('#stage').scrollTop, b = $('#lyrics').scrollTop; renderLyrics(); $('#stage').scrollTop = a; $('#lyrics').scrollTop = b;
+  lySheetLive();
+}
+/* teks buatan pengguna menggantikan teks dari sumber. Jumlah baris sama dengan lirik tersinkron: waktu tetap dipakai; kalau beda: jadi teks biasa */
+function lyrApplyTxt(L) {
+  const o = lyrTxt[L.id]; if (!o || !o.lines || !o.lines.length) return;
+  const key = `${L.src}|${L.lrcDur}`;
+  if (L.synced.length && o.key === key && o.lines.length === L.synced.length) { L.synced = L.synced.map((l, i) => [l[0], o.lines[i]]); L.edited = true; }
+  else if (!L.synced.length || o.key === 'plain') { L.synced = []; L.plain = o.lines.join('\n'); L.edited = true; }
+}
 const lyrBlank = (id = '', status = 'idle') => ({ id, status, items: [], sel: 0, synced: [], plain: '', src: '', lrcDur: 0, mismatch: false, active: -1, auto: true });
 state.lyr = lyrBlank();
 
@@ -1251,7 +1268,8 @@ function lyrApply(L, i, vdur) {
   L.sel = i; L.synced = x.synced || []; L.plain = x.plain || ''; L.src = x.src || 'LRCLIB'; L.lrcDur = x.dur || 0; L.instr = !!x.instr;
   const tol = vdur ? Math.max(12, vdur * 0.1) : 1e9;
   L.mismatch = !!(vdur && x.dur && Math.abs(x.dur - vdur) > tol);
-  L.vdurAt = vdur || 0;
+  L.vdurAt = vdur || 0; L.edited = false;
+  lyrApplyTxt(L);
 }
 function lyrSet(t, items) {
   const L = lyrBlank(t.id, 'ok'); L.items = items;
@@ -1404,15 +1422,15 @@ function renderLyrics() {
       ? `<button type="button" class="ly-auto" data-lyauto="${d}">Video ini ${d} dtk lebih panjang dari lagunya. Sesuaikan otomatis?</button>`
       : (L.mismatch ? '<span class="ly-warn">Versi lirik mungkin beda dengan video ini. Coba ganti versi atau sinkron manual.</span>' : '');
     const nv = L.items.filter((x) => x.synced.length).length;
-    bar = `<div class="ly-bar">${hint}<div class="ly-ctl"><span class="ly-lbl">Sinkron${off ? ' <em>' + fmtOff(off) + '</em>' : ''}</span>`
+    bar = `<div class="ly-bar">${hint}<div class="ly-ctl"><button type="button" class="pri" data-lysheet>⚙ Sinkronkan</button><span class="ly-lbl">${off ? '<em>' + fmtOff(off) + '</em>' : ''}</span>`
       + `<button type="button" data-lyoff="-0.5" aria-label="Lirik lebih cepat">−0,5</button><button type="button" data-lyoff="0.5" aria-label="Lirik lebih lambat">+0,5</button>`
-      + `<button type="button" class="${lyrTap ? 'on' : ''}" data-lytap>${lyrTap ? 'Tap baris yang lagi dinyanyiin…' : 'Tap buat sinkron'}</button>`
+      + `<button type="button" class="${lyrTap ? 'on' : ''}" data-lytap>${lyrTap ? 'Ketuk baris yang lagi dinyanyiin…' : 'Tap baris'}</button>`
       + `${nv > 1 ? `<button type="button" data-lyver>Versi ${L.items.indexOf(L.items[L.sel]) + 1}/${nv}</button>` : ''}`
       + `${off ? '<button type="button" data-lyreset>Reset</button>' : ''}</div></div>`;
   }
   const src = `<div class="ly-src"><span>Lirik dari ${esc(L.src || 'LRCLIB')}${L.synced.length ? ` · ${L.synced.length} baris tersinkron` : ''} · v${APP_V}</span></div>`;
   if (L.synced.length) el.innerHTML = bar + L.synced.map((l, i) => `<p data-ly="${i}" data-t="${l[0]}"${l[1] ? '' : ' class="gap"'}>${l[1] ? esc(l[1]) : '♪'}</p>`).join('') + src;
-  else el.innerHTML = `<div class="ly-note"><b>Lirik ini belum punya penanda waktu.</b> Barisnya tidak bisa menyala mengikuti lagu, jadi hanya digulir otomatis perkiraan. <button type="button" class="ly-retry" data-lyretry>Cari versi tersinkron</button></div>`
+  else el.innerHTML = `<div class="ly-note"><b>Lirik ini belum punya penanda waktu.</b> Barisnya tidak bisa menyala mengikuti lagu, jadi hanya digulir otomatis perkiraan. <button type="button" class="ly-retry" data-lyretry>Cari versi tersinkron</button> <button type="button" class="ly-retry" data-lysheet>Ubah teks</button></div>`
     + L.plain.split(/\r?\n/).map((l) => (l.trim() ? `<p>${esc(l)}</p>` : '<p class="gap"></p>')).join('') + src;
   L.active = -1;
 }
@@ -1620,30 +1638,129 @@ $('#upnext').addEventListener('click', (e) => {
 $('#pvVideo').addEventListener('click', () => setPview('video'));
 $('#pvLyrics').addEventListener('click', () => setPview('lyrics'));
 $('#lyrics').addEventListener('click', (e) => {
-  const keep = () => { const a = $('#stage').scrollTop, b = $('#lyrics').scrollTop; renderLyrics(); $('#stage').scrollTop = a; $('#lyrics').scrollTop = b; state.lyr.active = -1; };
-  const setOff = (v) => {
-    const id = current().id; v = Math.round(v * 10) / 10;
-    if (v) lyrOffs[id] = v; else delete lyrOffs[id];
-    const keys = Object.keys(lyrOffs); if (keys.length > 60) delete lyrOffs[keys[0]];
-    store.set('lyrOffs', lyrOffs); lyrTap = false; keep();
-  };
   const ob = e.target.closest('[data-lyoff]');
-  if (ob && current()) { setOff((lyrOffs[current().id] || 0) + parseFloat(ob.dataset.lyoff)); return; }
+  if (ob && current()) { lyrSetOff((lyrOffs[current().id] || 0) + parseFloat(ob.dataset.lyoff)); return; }
   if (e.target.closest('[data-lyretry]')) { lyrCache.delete(current().id); lyrNone.delete(current().id); ensureLyrics(true); return; }
-  if (current() && e.target.closest('[data-lyauto]')) { setOff(parseFloat(e.target.closest('[data-lyauto]').dataset.lyauto)); toast('Lirik udah disesuaiin'); return; }
-  if (current() && e.target.closest('[data-lyreset]')) { setOff(0); return; }
-  if (e.target.closest('[data-lyver]')) {
-    const L = state.lyr, idxs = L.items.map((x, i) => (x.synced.length ? i : -1)).filter((i) => i >= 0);
-    const next = idxs[(idxs.indexOf(L.sel) + 1) % idxs.length];
-    lyrApply(L, next, lyrVDur()); L.userSel = true;
-    if (current()) { delete lyrOffs[current().id]; store.set('lyrOffs', lyrOffs); }
-    renderLyrics(); lyrReset(); toast('Versi lirik diganti'); return;
-  }
+  if (current() && e.target.closest('[data-lyauto]')) { lyrSetOff(parseFloat(e.target.closest('[data-lyauto]').dataset.lyauto)); toast('Lirik udah disesuaiin'); return; }
+  if (current() && e.target.closest('[data-lyreset]')) { lyrSetOff(0); return; }
+  if (e.target.closest('[data-lysheet]')) { openLySheet(); return; }
+  if (e.target.closest('[data-lyver]')) { lyrNextVersion(); return; }
   if (e.target.closest('[data-lytap]')) { lyrTap = !lyrTap; const t1 = $('#lyrics').scrollTop; renderLyrics(); $('#lyrics').scrollTop = t1; return; }
   const p = e.target.closest('[data-t]'); if (!p || !ytReady) return;
-  if (lyrTap && current()) { setOff(lyrNow() - parseFloat(p.dataset.t)); toast('Sinkron! Lirik udah pas'); return; }
+  if (lyrTap && current()) { lyrSetOff(lyrNow() - parseFloat(p.dataset.t)); toast('Sinkron! Lirik udah pas'); return; }
   lyrUser = 0; yt.seekTo(parseFloat(p.dataset.t), true);
 });
+function lyrPickVersion(i) {
+  const L = state.lyr; if (!L.items[i]) return;
+  lyrApply(L, i, lyrVDur()); L.userSel = true;
+  if (current()) { delete lyrOffs[current().id]; store.set('lyrOffs', lyrOffs); }
+  renderLyrics(); lyrReset();
+}
+function lyrNextVersion() {
+  const L = state.lyr, idxs = L.items.map((x, i) => (x.synced.length ? i : -1)).filter((i) => i >= 0);
+  if (idxs.length < 2) return;
+  lyrPickVersion(idxs[(idxs.indexOf(L.sel) + 1) % idxs.length]); toast('Versi lirik diganti');
+}
+
+/* ---------- Panel "Sinkronkan lirik" ---------- */
+const lySheetEl = document.createElement('div');
+lySheetEl.id = 'lySheet'; lySheetEl.className = 'ly-sheet'; lySheetEl.hidden = true;
+lySheetEl.setAttribute('role', 'dialog'); lySheetEl.setAttribute('aria-modal', 'true'); lySheetEl.setAttribute('aria-label', 'Sinkronkan lirik');
+document.body.appendChild(lySheetEl);
+let lyMode = 'sync', lyDeb = 0;
+const fmtOffTxt = (v) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(1).replace('.', ',') + ' dtk';
+const fmtClock = (s) => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+function lyrLineNow() {
+  const L = state.lyr; if (!L.synced.length) return null;
+  const x = lyrNow() + 0.25 - lyrOff();
+  let lo = 0, hi = L.synced.length - 1, idx = -1;
+  while (lo <= hi) { const m = (lo + hi) >> 1; if (L.synced[m][0] <= x) { idx = m; lo = m + 1; } else hi = m - 1; }
+  return idx;
+}
+function lySheetHTML() {
+  const L = state.lyr, t = current(), off = lyrOff(), synced = L.synced.length > 0;
+  const head = `<div class="lys-h"><b>${lyMode === 'edit' ? 'Ubah teks lirik' : 'Sinkronkan lirik'}</b><button type="button" class="lys-x" data-lsclose aria-label="Tutup">✕</button></div>`;
+  if (lyMode === 'edit') {
+    const lines = synced ? L.synced.map((l) => l[1] || '') : L.plain.split(/\r?\n/);
+    return head + `<p class="lys-p">${synced ? `Lirik ini punya <b>${lines.length} baris</b> bertanda waktu. Kalau jumlah barisnya tetap ${lines.length}, waktunya tetap dipakai. Kalau berubah, liriknya jadi teks biasa.` : 'Ubah atau tempel teks lirik yang benar. Satu baris per baris lirik.'}</p>`
+      + `<textarea id="lsText" class="lys-ta" spellcheck="false" rows="10">${esc(lines.join('\n'))}</textarea>`
+      + `<div class="lys-cnt" id="lsCnt"></div>`
+      + `<div class="lys-row"><button type="button" class="lys-b" data-lsback>Batal</button><button type="button" class="lys-b" data-lstxtreset>Kembalikan asli</button><button type="button" class="lys-b pri" data-lssave>Simpan</button></div>`;
+  }
+  let h = head;
+  const idx = lyrLineNow();
+  h += `<div class="lys-now"><small>Sekarang <span id="lsClock">${fmtClock(lyrNow())}</span> · yang disorot di lirik:</small><b id="lsLine">${synced ? (idx >= 0 ? esc(L.synced[idx][1] || '♪') : '(belum mulai)') : 'Lirik ini tanpa penanda waktu'}</b></div>`;
+  if (synced) {
+    h += `<div class="lys-sec"><div class="lys-lbl">Geser waktu <em id="lsOff">${off ? fmtOffTxt(off) : '0 dtk'}</em></div>`
+      + `<input id="lsRange" class="lys-range" type="range" min="-30" max="30" step="0.1" value="${Math.max(-30, Math.min(30, off))}" aria-label="Geser waktu lirik">`
+      + `<div class="lys-hint"><span>◀ Lirik lebih cepat</span><span>Lirik lebih lambat ▶</span></div>`
+      + `<div class="lys-row">${[-1, -0.1, 0.1, 1].map((d) => `<button type="button" class="lys-b" data-lsoff="${d}">${d > 0 ? '+' : '−'}${Math.abs(d)}</button>`).join('')}</div>`
+      + `<p class="lys-p">Kalau barisnya <b>menyala sebelum</b> dinyanyikan, geser ke kanan (lebih lambat). Kalau <b>telat</b>, geser ke kiri (lebih cepat).</p></div>`
+      + `<div class="lys-sec"><div class="lys-lbl">Atau pilih baris</div><button type="button" class="lys-b wide" data-lstap>🎯 Ketuk baris yang sedang dinyanyikan</button><p class="lys-p">Dengarkan lagunya, lalu ketuk baris yang sedang dinyanyikan. Waktu lirik langsung disamakan.</p></div>`;
+  }
+  const vers = L.items.map((x, i) => [x, i]).filter(([x]) => x.synced.length || x.plain);
+  if (vers.length > 1) {
+    h += `<div class="lys-sec"><div class="lys-lbl">Versi lirik</div>` + vers.map(([x, i]) => `<button type="button" class="lys-ver${i === L.sel ? ' on' : ''}" data-lsver="${i}"><b>${esc(x.src)}</b><span>${x.synced.length ? x.synced.length + ' baris tersinkron' : 'teks biasa'}${x.dur ? ' · ' + fmtClock(x.dur) : ''}</span></button>`).join('') + `</div>`;
+  }
+  h += `<div class="lys-row sp"><button type="button" class="lys-b" data-lsedit>✎ Ubah teks lirik</button><button type="button" class="lys-b" data-lsreset>Reset sinkron</button></div>`;
+  return h;
+}
+function openLySheet(mode) {
+  if (!current()) return;
+  lyMode = mode || 'sync';
+  lySheetEl.innerHTML = `<div class="lys-card">${lySheetHTML()}</div>`;
+  lySheetEl.hidden = false;
+  if (lyMode === 'edit') lyCount();
+}
+function closeLySheet() { lySheetEl.hidden = true; lySheetEl.innerHTML = ''; }
+function lySheetLive() {   // perbarui tulisan di panel tanpa membangun ulang (supaya slider tidak terputus)
+  if (lySheetEl.hidden || lyMode !== 'sync') return;
+  const off = lyrOff(), o = $('#lsOff'); if (o) o.textContent = off ? fmtOffTxt(off) : '0 dtk';
+  const r = $('#lsRange'); if (r && document.activeElement !== r) r.value = Math.max(-30, Math.min(30, off));
+}
+setInterval(() => {
+  if (lySheetEl.hidden || lyMode !== 'sync') return;
+  const c = $('#lsClock'), l = $('#lsLine'), L = state.lyr; if (!c || !l) return;
+  c.textContent = fmtClock(lyrNow());
+  if (L.synced.length) { const i = lyrLineNow(); l.textContent = i >= 0 ? (L.synced[i][1] || '♪') : '(belum mulai)'; }
+}, 250);
+function lyCount() {
+  const ta = $('#lsText'), c = $('#lsCnt'); if (!ta || !c) return;
+  const n = ta.value.split(/\r?\n/).length, L = state.lyr;
+  c.textContent = L.synced.length ? (n === L.synced.length ? `${n} baris · waktu tetap dipakai ✓` : `${n} baris · beda dari ${L.synced.length}, jadi teks biasa`) : `${n} baris`;
+  c.classList.toggle('warn', !!L.synced.length && n !== L.synced.length);
+}
+lySheetEl.addEventListener('input', (e) => {
+  if (e.target.id === 'lsRange') { const v = parseFloat(e.target.value); clearTimeout(lyDeb); const o = $('#lsOff'); if (o) o.textContent = v ? fmtOffTxt(v) : '0 dtk'; lyDeb = setTimeout(() => lyrSetOff(v), 120); }
+  if (e.target.id === 'lsText') lyCount();
+});
+lySheetEl.addEventListener('click', (e) => {
+  const t = e.target; let el;
+  if (t === lySheetEl || t.closest('[data-lsclose]')) { closeLySheet(); return; }
+  if (!current()) return;
+  if ((el = t.closest('[data-lsoff]'))) { lyrSetOff((lyrOffs[current().id] || 0) + parseFloat(el.dataset.lsoff)); return; }
+  if (t.closest('[data-lsreset]')) { lyrSetOff(0); lySheetEl.querySelector('.lys-card').innerHTML = lySheetHTML(); return; }
+  if (t.closest('[data-lstap]')) { closeLySheet(); lyrTap = true; if (state.pview !== 'lyrics') setPview('lyrics'); renderLyrics(); toast('Ketuk baris yang sedang dinyanyikan'); return; }
+  if ((el = t.closest('[data-lsver]'))) { lyrPickVersion(+el.dataset.lsver); lySheetEl.querySelector('.lys-card').innerHTML = lySheetHTML(); return; }
+  if (t.closest('[data-lsedit]')) { openLySheet('edit'); return; }
+  if (t.closest('[data-lsback]')) { openLySheet('sync'); return; }
+  if (t.closest('[data-lstxtreset]')) {
+    delete lyrTxt[current().id]; store.set('lyrTxt', lyrTxt);
+    const L = state.lyr; lyrApply(L, L.sel, lyrVDur()); renderLyrics(); openLySheet('edit'); toast('Teks asli dikembalikan'); return;
+  }
+  if (t.closest('[data-lssave]')) {
+    const L = state.lyr, lines = $('#lsText').value.replace(/\r/g, '').split('\n');
+    while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
+    if (!lines.some((l) => l.trim())) { toast('Teksnya masih kosong'); return; }
+    const same = L.synced.length && lines.length === L.synced.length;
+    lyrTxt[current().id] = { key: same ? `${L.src}|${L.lrcDur}` : 'plain', lines: lines.slice(0, 400) };
+    const ks = Object.keys(lyrTxt); if (ks.length > 40) delete lyrTxt[ks[0]];
+    store.set('lyrTxt', lyrTxt);
+    const base = L.items[L.sel]; if (base) { L.synced = base.synced || []; L.plain = base.plain || ''; }
+    lyrApplyTxt(L); renderLyrics(); lyrReset(); closeLySheet(); toast(same ? 'Teks lirik disimpan' : 'Disimpan sebagai teks biasa'); return;
+  }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !lySheetEl.hidden) { closeLySheet(); e.stopPropagation(); } }, true);
 ['wheel', 'touchmove', 'touchstart'].forEach((ev) => $('#stage').addEventListener(ev, () => { lyrUser = Date.now(); cancelAnimationFrame(lyrAnim); $('#stage').style.scrollBehavior = ''; }, { passive: true }));
 $('#nextPeek').addEventListener('click', (e) => { goTo(+e.currentTarget.dataset.upi); });
 /* tarik ke bawah untuk menutup pemutar */
@@ -2053,7 +2170,7 @@ if (state.tab === 'home' || state.tab === 'library') loadCharts();
 /* ---------- Versi & pembaruan ----------
    Versi aplikasi dicek ke /version.json (tanpa cache). Kalau beda dengan yang berjalan, cache & service worker dibersihkan lalu
    aplikasi dimuat ulang otomatis. Tombol "Perbarui aplikasi" di Pustaka melakukan hal yang sama secara manual. */
-const APP_V = '2026.11.01-5';
+const APP_V = '2026.11.01-6';
 async function appUpdate(manual) {
   try {
     let latest = APP_V;
