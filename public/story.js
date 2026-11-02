@@ -308,9 +308,172 @@
     },
   };
 
+  /* =====================================================================
+     TEMPLATE 3: Aurora Glass  (cahaya aurora melayang, kartu kaca, progres bergerak)
+     ===================================================================== */
+  const AURORA = {
+    layers(d, w, h) {
+      const hue = d.pal.h, rnd = rng(hash(d.id) + 3);
+      const back = mkLayer(w, h, (c) => {
+        c.fillStyle = `hsl(${hue},45%,8%)`; c.fillRect(0, 0, W, H);
+        c.globalAlpha = .5; blurCover(c, d.img, -300, -300, W + 600, H + 600); c.globalAlpha = 1;
+        c.fillStyle = `hsla(${hue},50%,6%,.55)`; c.fillRect(0, 0, W, H);
+        grain(c, 4500, .03, rnd);
+      });
+      const CX = 140, CY = 360, CW = W - 280, CH = 1130;   // kartu kaca
+      const card = mkLayer(w, h, (c) => {
+        c.save(); c.shadowColor = 'rgba(0,0,0,.45)'; c.shadowBlur = 90; c.shadowOffsetY = 40; rr(c, CX, CY, CW, CH, 70); c.fillStyle = 'rgba(255,255,255,.08)'; c.fill(); c.restore();
+        c.save(); rr(c, CX, CY, CW, CH, 70); c.clip();
+        c.globalAlpha = .5; blurCover(c, d.img, CX - 60, CY - 60, CW + 120, CH + 120); c.globalAlpha = 1;
+        const g = c.createLinearGradient(CX, CY, CX + CW, CY + CH); g.addColorStop(0, 'rgba(255,255,255,.26)'); g.addColorStop(.5, 'rgba(255,255,255,.08)'); g.addColorStop(1, `hsla(${(hue + 40) % 360},100%,70%,.16)`);
+        c.fillStyle = g; c.fillRect(CX, CY, CW, CH); c.restore();
+        rr(c, CX, CY, CW, CH, 70); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.4)'; c.stroke();
+        // sampul
+        const s = 580, sx = W / 2 - s / 2, sy = CY + 90;
+        c.save(); c.shadowColor = 'rgba(0,0,0,.5)'; c.shadowBlur = 60; c.shadowOffsetY = 28; rr(c, sx, sy, s, s, 48); c.fillStyle = '#111'; c.fill(); c.restore();
+        c.save(); rr(c, sx, sy, s, s, 48); c.clip(); drawSquare(c, d.img, sx, sy, s); c.restore();
+        rr(c, sx, sy, s, s, 48); c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.35)'; c.stroke();
+        // teks
+        const mw = CW - 120, t = fit(c, d.title, 800, FONT_A, mw, 2, 78, 48);
+        c.textAlign = 'center'; c.fillStyle = '#fff'; const ty = sy + s + 120;
+        t.lines.forEach((l, i) => c.fillText(l, W / 2, ty + i * (t.size * 1.1)));
+        const ay = ty + (t.lines.length - 1) * (t.size * 1.1) + 70, a = fit(c, d.artist, 600, FONT_A, mw, 1, 44, 30);
+        c.fillStyle = `hsl(${hue},100%,80%)`; c.fillText(a.lines[0], W / 2, ay); c.textAlign = 'left';
+      });
+      const front = mkLayer(w, h, (c) => {
+        c.font = `800 34px ${FONT_A}`; const label = 'SEDANG DIPUTAR', lw = c.measureText(label).width + 90;
+        rr(c, W / 2 - lw / 2, 190, lw, 80, 40); c.fillStyle = 'rgba(255,255,255,.12)'; c.fill(); c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,.4)'; c.stroke();
+        c.fillStyle = '#fff'; c.textBaseline = 'middle'; c.textAlign = 'center'; c.fillText(label, W / 2 + 22, 232); c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+        logo(c, W / 2 - 150, 1640, 64); c.font = `800 44px ${FONT_A}`; c.fillStyle = '#fff'; c.fillText('Nada', W / 2 - 70, 1686);
+        c.font = `600 30px ${FONT_A}`; c.fillStyle = 'rgba(255,255,255,.55)'; c.textAlign = 'center'; c.fillText('dengerin juga di Nada', W / 2, 1768); c.textAlign = 'left';
+      });
+      return { back, card, front };
+    },
+    frame(c, d, t, L) {
+      const hue = d.pal.h, beat = beatOf(t), ph = (hash(d.id) % 628) / 100, u = t / DUR * TAU;
+      c.drawImage(L.back, 0, 0, W, H);
+      // aurora: tiga cahaya besar melayang pelan
+      const blobs = [[hue, 220, 420, 150, 90], [(hue + 55) % 360, 880, 760, 130, 110], [(hue + 300) % 360, 420, 1440, 170, 80]];
+      c.globalCompositeOperation = 'screen';
+      blobs.forEach(([hh, x, y, rx, ry], i) => {
+        const bx = x + Math.sin(u + i * 2.1) * rx, by = y + Math.cos(u + i * 1.3) * ry, r = 620 + 40 * Math.sin(u * 2 + i);
+        const g = c.createRadialGradient(bx, by, 0, bx, by, r); g.addColorStop(0, `hsla(${hh},95%,58%,${.5 + .08 * beat})`); g.addColorStop(1, 'transparent');
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+      });
+      c.globalCompositeOperation = 'source-over';
+      // cincin berdenyut di belakang sampul
+      for (let k = 0; k < 2; k++) {
+        const q = ((t / DUR * 2) + k * .5) % 1; c.beginPath(); c.arc(W / 2, 740, 330 + q * 260, 0, TAU);
+        c.lineWidth = 4; c.strokeStyle = `hsla(${hue},100%,75%,${(1 - q) * .35})`; c.stroke();
+      }
+      c.drawImage(L.card, 0, 0, W, H);
+      // progres: pakai posisi lagu asli kalau ada, kalau tidak berjalan berulang
+      const bx = 220, bw = W - 440, by = 1405, has = d.dur > 0;
+      const p = has ? clamp((d.cur + t) / d.dur, 0, 1) : (t / DUR);
+      rr(c, bx, by, bw, 12, 6); c.fillStyle = 'rgba(255,255,255,.22)'; c.fill();
+      const pw = Math.max(16, bw * p); rr(c, bx, by, pw, 12, 6); const pg = c.createLinearGradient(bx, 0, bx + bw, 0); pg.addColorStop(0, `hsl(${hue},100%,72%)`); pg.addColorStop(1, `hsl(${(hue + 55) % 360},100%,72%)`); c.fillStyle = pg; c.fill();
+      c.fillStyle = '#fff'; c.shadowColor = `hsl(${hue},100%,70%)`; c.shadowBlur = 24; c.beginPath(); c.arc(bx + pw, by + 6, 16 + 3 * beat, 0, TAU); c.fill(); noShadow(c);
+      c.font = `600 30px ${FONT_A}`; c.fillStyle = 'rgba(255,255,255,.75)';
+      c.fillText(has ? fmt(d.cur + t) : fmt(t), bx, by + 62); c.textAlign = 'right'; c.fillText(has ? fmt(d.dur) : '∞', bx + bw, by + 62); c.textAlign = 'left';
+      // gelombang mini di atas progres
+      for (let i = 0; i < 5; i++) { const hh = 14 + 46 * level(t, i * 3 + 1, 15, ph); rr(c, W / 2 - 80 + i * 36, 1340 - hh, 18, hh, 9); c.fillStyle = `hsla(${hue},100%,80%,.9)`; c.fill(); }
+      c.drawImage(L.front, 0, 0, W, H);
+      c.fillStyle = `hsl(${hue},100%,72%)`; c.shadowColor = `hsl(${hue},100%,65%)`; c.shadowBlur = 20; c.beginPath(); c.arc(W / 2 - 150, 231, 9 + 3 * beat, 0, TAU); c.fill(); noShadow(c);
+    },
+  };
+
+  /* =====================================================================
+     TEMPLATE 4: Kaset Retro  (kaset dengan roda berputar, label tulisan tangan)
+     ===================================================================== */
+  const CAS = { x: 90, y: 560, w: 900, h: 600 };
+  const CASSETTE = {
+    layers(d, w, h) {
+      const hue = d.pal.h, rnd = rng(hash(d.id) + 11);
+      const back = mkLayer(w, h, (c) => {
+        const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, `hsl(${(hue + 12) % 360},70%,86%)`); g.addColorStop(1, `hsl(${(hue + 340) % 360},65%,78%)`);
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        c.fillStyle = `hsla(${hue},70%,45%,.12)`; for (let y = 60; y < H; y += 60) c.fillRect(0, y, W, 3);      // garis seperti buku catatan
+        c.fillStyle = `hsla(${(hue + 40) % 360},85%,60%,.5)`; c.beginPath(); c.arc(960, 230, 190, 0, TAU); c.fill();
+        c.fillStyle = 'rgba(255,255,255,.4)'; c.beginPath(); c.arc(70, 1640, 230, 0, TAU); c.fill();
+        grain(c, 7000, .05, rnd);
+      });
+      const bodyW = CAS.w, bodyH = CAS.h, k = w / W, pad = 80;
+      const body = document.createElement('canvas'); body.width = Math.round((bodyW + pad * 2) * k); body.height = Math.round((bodyH + pad * 2) * k);
+      const cc = body.getContext('2d'); cc.scale(k, k); cc.translate(pad, pad); cc.textBaseline = 'alphabetic';
+      cc.shadowColor = 'rgba(40,10,30,.45)'; cc.shadowBlur = 60; cc.shadowOffsetY = 36; rr(cc, 0, 0, bodyW, bodyH, 48); cc.fillStyle = '#1b1620'; cc.fill(); noShadow(cc);
+      const bg = cc.createLinearGradient(0, 0, 0, bodyH); bg.addColorStop(0, '#2a2330'); bg.addColorStop(1, '#14101a'); rr(cc, 0, 0, bodyW, bodyH, 48); cc.fillStyle = bg; cc.fill();
+      // label (stiker) berisi sampul + judul tulisan tangan
+      const lx = 60, ly = 50, lw = bodyW - 120, lh = 330;
+      rr(cc, lx, ly, lw, lh, 26); cc.fillStyle = '#fff6e5'; cc.fill();
+      cc.save(); rr(cc, lx, ly, lw, lh, 26); cc.clip();
+      cc.fillStyle = `hsl(${hue},85%,58%)`; cc.fillRect(lx, ly, lw, 62); cc.fillStyle = `hsl(${(hue + 50) % 360},90%,62%)`; cc.fillRect(lx, ly + 62, lw, 14);
+      cc.restore();
+      cc.fillStyle = '#fff'; cc.font = `800 32px ${FONT_A}`; cc.textBaseline = 'middle'; cc.fillText('SIDE A', lx + 28, ly + 33);
+      cc.textAlign = 'right'; cc.fillText('NADA TAPE · 90 MIN', lx + lw - 28, ly + 33); cc.textAlign = 'left'; cc.textBaseline = 'alphabetic';
+      const cs = 196, cx0 = lx + 28, cy0 = ly + 106;
+      cc.save(); rr(cc, cx0, cy0, cs, cs, 18); cc.clip(); drawSquare(cc, d.img, cx0, cy0, cs); cc.restore(); rr(cc, cx0, cy0, cs, cs, 18); cc.lineWidth = 4; cc.strokeStyle = '#1b1620'; cc.stroke();
+      const tx = cx0 + cs + 34, mw = lw - cs - 28 * 2 - 34, t = fit(cc, d.title, 400, FONT_B, mw, 2, 60, 36);
+      cc.fillStyle = '#1b1620'; t.lines.forEach((l, i) => cc.fillText(l, tx, cy0 + 56 + i * (t.size * 1.12)));
+      const ay = cy0 + 56 + (t.lines.length - 1) * (t.size * 1.12) + 52, a = fit(cc, d.artist, 700, FONT_A, mw, 1, 34, 24);
+      cc.fillStyle = `hsl(${hue},70%,38%)`; cc.fillText(a.lines[0], tx, ay);
+      cc.fillStyle = '#1b1620'; for (let i = 0; i < 3; i++) cc.fillRect(tx, cy0 + cs - 18 + i * 0, 0, 0);
+      // jendela pita (bawah) + sekrup
+      rr(cc, 190, 420, bodyW - 380, 130, 65); cc.fillStyle = '#0a080d'; cc.fill(); cc.lineWidth = 4; cc.strokeStyle = 'rgba(255,255,255,.18)'; cc.stroke();
+      for (const [sx, sy] of [[40, 40], [bodyW - 40, 40], [40, bodyH - 40], [bodyW - 40, bodyH - 40]]) { cc.fillStyle = '#4a4252'; cc.beginPath(); cc.arc(sx, sy, 11, 0, TAU); cc.fill(); cc.fillStyle = '#1b1620'; cc.fillRect(sx - 8, sy - 2, 16, 4); }
+      const front = mkLayer(w, h, (c) => {
+        c.font = `800 36px ${FONT_A}`; c.fillStyle = '#1b1620'; c.fillText('♪ LAGI DIPUTAR', 100, 250);
+        c.font = `64px ${FONT_B}`; c.fillStyle = '#1b1620'; c.fillText('mixtape', 100, 340);
+        logo(c, 100, 1716, 60, '#fff'); c.font = `800 40px ${FONT_A}`; c.fillStyle = '#1b1620'; c.fillText('Nada', 176, 1760);
+        c.font = `38px ${FONT_B}`; c.textAlign = 'right'; c.fillText('dengerin bareng yuk!', W - 100, 1760); c.textAlign = 'left';
+      });
+      return { back, body, front, pad };
+    },
+    frame(c, d, t, L) {
+      const hue = d.pal.h, beat = beatOf(t), u = t / DUR * TAU;
+      c.drawImage(L.back, 0, 0, W, H);
+      // not musik naik
+      c.textBaseline = 'middle'; c.textAlign = 'center';
+      for (let i = 0; i < 6; i++) {
+        const q = ((t / DUR) + i / 6) % 1, x = 160 + (i * 163) % 780 + Math.sin(q * TAU * 2 + i) * 24, y = 520 - q * 340, a = Math.sin(Math.PI * q);
+        c.save(); c.translate(x, y); c.rotate(Math.sin(q * TAU + i) * .4); c.globalAlpha = a * .9; c.font = `${70 + (i % 2) * 24}px ${FONT_A}`; c.fillStyle = i % 2 ? `hsl(${hue},80%,40%)` : '#fff'; c.fillText(i % 3 ? '♪' : '♫', 0, 0); c.restore();
+      }
+      c.textBaseline = 'alphabetic'; c.textAlign = 'left';
+      // kaset bergoyang pelan
+      c.save(); c.translate(CAS.x + CAS.w / 2, CAS.y + CAS.h / 2 + 10 * Math.sin(u * 2)); c.rotate(-.05 + .014 * Math.sin(u));
+      c.translate(-CAS.w / 2, -CAS.h / 2); c.drawImage(L.body, -L.pad, -L.pad, CAS.w + L.pad * 2, CAS.h + L.pad * 2);
+      // pita + roda berputar di jendela
+      const wy = 485, lx = 305, rx = CAS.w - 305;
+      const lr = 52 + 20 * (1 - (t / DUR)), rrad = 52 + 20 * (t / DUR);       // pita pindah dari kiri ke kanan
+      c.fillStyle = '#5a3a24'; for (const [x, r] of [[lx, lr], [rx, rrad]]) { c.beginPath(); c.arc(x, wy, r, 0, TAU); c.fill(); }
+      for (const x of [lx, rx]) {
+        c.save(); c.translate(x, wy); c.rotate(u * 3 * (x === lx ? 1 : 1));
+        c.fillStyle = '#efe8dc'; c.beginPath(); c.arc(0, 0, 38, 0, TAU); c.fill();
+        c.fillStyle = '#1b1620'; for (let i = 0; i < 6; i++) { c.save(); c.rotate(i * TAU / 6); c.fillRect(-5, -38, 10, 20); c.restore(); }
+        c.beginPath(); c.arc(0, 0, 14, 0, TAU); c.fill(); c.restore();
+      }
+      c.strokeStyle = '#5a3a24'; c.lineWidth = 5; c.beginPath(); c.moveTo(lx, wy + lr); c.lineTo(rx, wy + rrad); c.stroke();
+      // lampu REC kecil berdenyut
+      c.fillStyle = `hsl(${hue},95%,${55 + 15 * beat}%)`; c.beginPath(); c.arc(CAS.w - 100, 440, 12 + 3 * beat, 0, TAU); c.fill();
+      c.restore();
+      // pita menjuntai bergelombang di bawah kaset
+      c.strokeStyle = '#3a2618'; c.lineWidth = 8; c.lineCap = 'round'; c.beginPath();
+      for (let x = 120; x <= W - 120; x += 12) { const y = 1330 + Math.sin(x / 90 + u * 2) * 26 + Math.sin(x / 41 - u * 3) * 8; x === 120 ? c.moveTo(x, y) : c.lineTo(x, y); }
+      c.stroke(); c.lineCap = 'butt';
+      c.drawImage(L.front, 0, 0, W, H);
+      // stiker bintang
+      c.save(); c.translate(900, 1520); c.rotate(.2 + .12 * Math.sin(u * 2)); const sc = 1 + .06 * beat; c.scale(sc, sc);
+      c.beginPath(); for (let i = 0; i < 24; i++) { const r = i % 2 ? 92 : 116, a2 = i / 24 * TAU; c.lineTo(Math.cos(a2) * r, Math.sin(a2) * r); } c.closePath();
+      c.fillStyle = '#1b1620'; c.save(); c.translate(7, 9); c.fill(); c.restore(); c.fillStyle = '#ffe14a'; c.fill(); c.lineWidth = 6; c.strokeStyle = '#1b1620'; c.stroke();
+      c.fillStyle = '#1b1620'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.font = `44px ${FONT_B}`; c.fillText('best', 0, -24); c.fillText('tape', 0, 26); c.restore();
+      c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+    },
+  };
+
   const TEMPLATES = [
     { id: 'neon', name: 'Neon Vinyl', ...NEON },
     { id: 'y2k', name: 'Y2K Polaroid', ...Y2K },
+    { id: 'aurora', name: 'Aurora Glass', ...AURORA },
+    { id: 'kaset', name: 'Kaset Retro', ...CASSETTE },
   ];
   const STILL_T = 1.0;      // detik yang dipakai untuk gambar diam
 

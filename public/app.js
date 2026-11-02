@@ -2181,7 +2181,7 @@ if (state.tab === 'home' || state.tab === 'library') loadCharts();
 /* ---------- Versi & pembaruan ----------
    Versi aplikasi dicek ke /version.json (tanpa cache). Kalau beda dengan yang berjalan, cache & service worker dibersihkan lalu
    aplikasi dimuat ulang otomatis. Tombol "Perbarui aplikasi" di Pustaka melakukan hal yang sama secara manual. */
-const APP_V = '2026.11.01-10';
+const APP_V = '2026.11.02-1';
 async function appUpdate(manual) {
   try {
     let latest = APP_V;
