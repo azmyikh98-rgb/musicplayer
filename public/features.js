@@ -33,7 +33,7 @@ const FI = {
 function statsMonth(k) { const m = NF.stats.months; return m[k] || (m[k] = { sec: 0, plays: 0, days: {}, tracks: {}, artists: {} }); }
 function statsTick() {
   if (!state.playing) return;
-  const t = current(); if (!t) return;
+  const t = current(); if (!t || t.pod) return;
   const L = NF.listen;
   if (L.id !== t.id) { L.id = t.id; L.sec = 0; L.counted = false; }
   L.sec++;
@@ -197,7 +197,7 @@ const shuffled = (arr, rnd) => { const a = arr.slice(); for (let i = a.length - 
 const uniqTracks = (arr) => { const seen = new Set(); return arr.filter((t) => t && t.id && !seen.has(t.id) && seen.add(t.id)); };
 function knownTracks() {
   const all = statsRange('all');
-  return uniqTracks([...topBy(all.tracks, 40).map(asTrack), ...state.fav, ...state.recent]);
+  return uniqTracks([...topBy(all.tracks, 40).map(asTrack), ...state.fav, ...state.recent]).filter((t) => !t.pod);
 }
 function artistScores() {
   const sc = {};
@@ -327,7 +327,7 @@ $('#qsBody').addEventListener('click', (e) => {
   else { playNext(x); NF.sim.items.splice(i, 1); next(); renderQueueSheet(); }
 });
 function autoplayNext() {
-  if (!NF.autoplay || !current()) return false;
+  if (!NF.autoplay || !current() || current().pod) return false;
   const t = current();
   (async () => {
     await loadSimilar();
@@ -536,16 +536,19 @@ async function backupAct(a) {
 function featTracks(ctx) {
   if (ctx === 'recap') return recapData().tracks;
   if (ctx.startsWith('mix:')) { const m = mixById(ctx.slice(4)); return m ? m.tracks : []; }
+  if (typeof podTracks === 'function') { const r = podTracks(ctx); if (r) return r; }
   return null;
 }
 function featView(ctx) {
   if (ctx === 'recap') return recapViewHTML();
   if (ctx.startsWith('mix:')) return mixViewHTML(ctx.slice(4));
+  if (ctx.startsWith('pod:') && typeof podViewHTML === 'function') return podViewHTML(ctx.slice(4));
   return '';
 }
 function featViewMeta(ctx) {
   if (ctx === 'recap') return { kind: 'Ringkasan', title: 'Nada Recap' };
   if (ctx.startsWith('mix:')) { const m = mixById(ctx.slice(4)); return { kind: 'Mix Untukmu', title: m ? m.name : 'Mix' }; }
+  if (ctx.startsWith('pod:') && typeof podTopic === 'function') { const T = podTopic(ctx.slice(4)); return { kind: 'Podcast', title: T ? T[2] : 'Podcast' }; }
   return null;
 }
 function featLibTiles(lib) {

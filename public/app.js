@@ -90,7 +90,7 @@ let yt = null, ytReady = false, pending = null, seeking = false;
 const current = () => state.queue[state.idx];
 const isFav = (id) => state.fav.some((t) => t.id === id);
 const isFollowing = (name) => state.artists.some((a) => lc(a.name) === lc(name));
-const slim = (t) => ({ id: t.id, title: t.title, artist: t.artist, thumb: t.thumb || thumb(t.id) });
+const slim = (t) => (t.pod ? { id: t.id, title: t.title, artist: t.artist, thumb: t.thumb || thumb(t.id), pod: 1, dur: t.dur || 0, pub: t.pub || '' } : { id: t.id, title: t.title, artist: t.artist, thumb: t.thumb || thumb(t.id) });
 
 /* konteks daftar: 'search' | 'liked' | 'recent' | 'chartID' | 'chartGLOBAL' | 'pl:<id>' */
 function ctxTracks(ctx) {
@@ -269,6 +269,9 @@ function homeHTML() {
 
   // 3. lagi ramai: tangga lagu di atas supaya beranda langsung terasa hidup
   out += zone('Jelajahi') + chartsBlock();
+
+  // 3b. podcast: obrolan panjang, dengan lanjutkan dari posisi terakhir
+  out += typeof podSection === 'function' ? podSection() : '';
 
   // 4. untukmu: riwayat dan lagu yang disukai
   if (state.recent.length || state.fav.length) out += zone('Untukmu');
@@ -468,6 +471,7 @@ function renderPeek() {
 }
 function renderPlayer() {
   const t = current();
+  if (typeof podSync === 'function') podSync();
   $('#mini').hidden = !t;
   $('#player').classList.toggle('idle', !t);
   renderUpnext(); renderQBadge();
@@ -493,6 +497,7 @@ function renderControls() {
   $('#shuffle').classList.toggle('on', state.shuffle);
   $('#repeat').classList.toggle('on', state.repeat !== 'off');
   $('#repeat').classList.toggle('one', state.repeat === 'one');
+  if (typeof podSync === 'function') podSync();
 }
 
 /* ---------- navigasi ---------- */
@@ -1150,13 +1155,14 @@ function playList(list, i) {
 function load(start = 0) {
   const t = current(); if (!t) return;
   userPick = !autoLoad; autoLoad = false;
+  if (!start && typeof podStart === 'function') start = podStart(t) || 0;
   state.want = true; keep.start();
   if (ytReady) yt.loadVideoById({ videoId: t.id, startSeconds: start }); else pending = { id: t.id, start };
   state.recent = [slim(t), ...state.recent.filter((x) => x.id !== t.id)].slice(0, 50);
   store.set('recent', state.recent);
-  backfillArtist(t);
+  if (!t.pod) backfillArtist(t);
   renderPlayer(); renderControls(); markPlaying(); updateMediaSession();
-  state.lyr = lyrBlank(); if (state.pview === 'lyrics') ensureLyrics(); else setTimeout(() => { if (current() && current().id === t.id) ensureLyrics(); }, 1500);   // lirik disiapkan lebih awal
+  state.lyr = lyrBlank(); if (state.pview === 'lyrics') ensureLyrics(); else if (!t.pod) setTimeout(() => { if (current() && current().id === t.id) ensureLyrics(); }, 1500);   // lirik disiapkan lebih awal
   $('#seek').value = 0; $('#seek').style.setProperty('--p', '0%');
 }
 
@@ -1170,7 +1176,7 @@ function nextInner(auto) {
   if (auto && state.sleep && state.sleep.mode === 'end') { sleepFire(); return; }
   if (auto && state.repeat === 'one') { yt.seekTo(0, true); yt.playVideo(); return; }
   if (state.userQ > 0 && state.idx + 1 < n) { state.idx++; state.userQ--; load(0); return; }
-  if (state.shuffle && n > 1) {
+  if (state.shuffle && n > 1 && !(current() && current().pod)) {
     const r = shufNext();
     state.idx = r;
   } else if (state.idx + 1 < n) state.idx++;
@@ -1391,11 +1397,13 @@ async function ensureLyrics(force) {
 const lyrReset = () => { const s = $('#stage'), l = $('#lyrics'); if (s) s.scrollTop = 0; if (l) l.scrollTop = 0; };
 
 function setPview(v) {
+  if (v === 'lyrics' && typeof isPod === 'function' && isPod()) { toast('Podcast tidak punya lirik'); return; }
   state.pview = v === 'lyrics' ? 'lyrics' : 'video';
   store.set('pview', state.pview);
   $('#player').dataset.pview = state.pview;
   $('#pvVideo').setAttribute('aria-pressed', String(state.pview === 'video'));
   $('#pvLyrics').setAttribute('aria-pressed', String(state.pview === 'lyrics'));
+  if (typeof podSync === 'function') podSync();
   if (state.pview === 'lyrics') ensureLyrics();
 }
 
@@ -2170,7 +2178,7 @@ if (state.tab === 'home' || state.tab === 'library') loadCharts();
 /* ---------- Versi & pembaruan ----------
    Versi aplikasi dicek ke /version.json (tanpa cache). Kalau beda dengan yang berjalan, cache & service worker dibersihkan lalu
    aplikasi dimuat ulang otomatis. Tombol "Perbarui aplikasi" di Pustaka melakukan hal yang sama secara manual. */
-const APP_V = '2026.11.01-6';
+const APP_V = '2026.11.01-7';
 async function appUpdate(manual) {
   try {
     let latest = APP_V;

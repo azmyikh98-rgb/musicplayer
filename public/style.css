@@ -1018,3 +1018,42 @@ html.tv .sheet[data-pview="lyrics"] .lyrics p{font-size:1.5rem}
 .lys-cnt.warn{color:#ffb86b}
 .ly-ctl .pri{padding:.3rem .75rem}
 #kSync{font-size:.75rem}
+
+/* ================= Podcast ================= */
+.pchips{display:flex;gap:.5rem;overflow-x:auto;padding:.125rem 1rem .75rem;margin:0 -1rem;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.pchips::-webkit-scrollbar{display:none}
+.pchip{flex:none;padding:.5rem .9375rem;border-radius:999px;background:rgba(255,255,255,.08);color:var(--text);font-size:.8125rem;font-weight:600;border:1px solid transparent;transition:background .15s,transform .15s}
+.pchip:active{transform:scale(.96)}
+.pchip.on{background:var(--accent);color:#fff}
+.card.pcard{width:15rem;flex:none}
+.pcard .pth{position:relative;aspect-ratio:16/9;border-radius:.875rem;overflow:hidden;background:var(--panel)}
+.pcard .pth img{width:100%;height:100%;object-fit:cover;display:block}
+.pcard b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;margin-top:.5rem;font-size:.875rem;line-height:1.3}
+.pcard small{display:block;margin-top:.1875rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pdur{position:absolute;right:.4375rem;bottom:.4375rem;padding:.125rem .4375rem;border-radius:.375rem;background:rgba(0,0,0,.72);font-size:.6875rem;font-weight:700;color:#fff}
+.pbar{position:absolute;left:0;right:0;bottom:0;height:.25rem;background:rgba(255,255,255,.25)}
+.pbar b{display:block;height:100%;margin:0;background:var(--accent)}
+.card.pcard.sk .pth{animation:pulse 1.2s ease-in-out infinite}
+.pcard .card-more{top:.375rem;right:.375rem}
+.prow .pthumb{width:6.25rem;height:3.5rem;aspect-ratio:16/9;border-radius:.625rem;flex:none;position:relative;overflow:hidden}
+.prow .pthumb img{width:100%;height:100%;object-fit:cover}
+.prow .meta b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;line-height:1.3}
+.prow .pmeta{color:var(--accent);font-weight:600}
+.psort{display:inline-flex;gap:.25rem;padding:.1875rem;border-radius:999px;background:rgba(255,255,255,.08);margin:.25rem 0 .875rem}
+.psort button{padding:.4375rem 1rem;border-radius:999px;color:var(--muted);font-size:.8125rem;font-weight:700}
+.psort button.on{background:#fff;color:#111}
+.vhero.pod{padding-bottom:.5rem}
+
+/* pemutar: mode podcast */
+.sheet.pod .pview,.sheet.pod #kBtn{display:none}
+.sheet.pod .info h2{font-size:1.1875rem;line-height:1.25;-webkit-line-clamp:3;display:-webkit-box;-webkit-box-orient:vertical;overflow:hidden;white-space:normal}
+.sheet.pod .controls .icon-btn{position:relative}
+.sheet.pod .controls #prev,.sheet.pod .controls #next{width:3.5rem;height:3.5rem}
+.sheet.pod .controls .skip{width:2.25rem;height:2.25rem;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sheet.pod .controls .skn{position:absolute;left:50%;top:50%;transform:translate(-50%,-38%);font-size:.625rem;font-weight:800;pointer-events:none}
+.sheet.pod #shuffle{width:auto;min-width:3rem;padding:0 .75rem;border-radius:999px;background:rgba(255,255,255,.1);height:2.375rem;color:#fff}
+.sheet.pod #shuffle .spd{font-size:.8125rem;font-weight:800;letter-spacing:.01em}
+.sheet.pod #repeat svg{fill:currentColor;stroke:none}
+.sheet.pod #repeat em{display:none}
+.sheet.pod .video{margin-top:.5rem}
+html.pod-mode .mini .meta small::after{content:' · Podcast';color:var(--accent)}
