@@ -1057,3 +1057,38 @@ html.tv .sheet[data-pview="lyrics"] .lyrics p{font-size:1.5rem}
 .sheet.pod #repeat em{display:none}
 .sheet.pod .video{margin-top:.5rem}
 html.pod-mode .mini .meta small::after{content:' · Podcast';color:var(--accent)}
+
+/* ================= Video layar penuh ================= */
+.vfs-btn{position:absolute;top:.5rem;right:.5rem;z-index:3;width:2.25rem;height:2.25rem;border-radius:.625rem;background:rgba(0,0,0,.5);color:#fff;display:grid;place-items:center;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:.85;transition:opacity .15s,transform .15s}
+.vfs-btn:active{transform:scale(.92)}
+.vfs-btn svg{width:1.125rem;height:1.125rem;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sheet.idle .vfs-btn,html.tv .vfs-btn{display:none}
+.vfs-ui{display:none}
+html.vfs-on .video.vfs{position:fixed;inset:0;width:100%;height:100%;max-width:none;min-height:0;aspect-ratio:auto;margin:0;border-radius:0;z-index:95;background:#000;box-shadow:none;opacity:1}
+html.vfs-on .video.vfs.rot{inset:auto;top:0;left:100%;width:100vh;width:100dvh;height:100vw;height:100dvw;transform-origin:0 0;transform:rotate(90deg)}
+html.vfs-on .video.vfs .vfs-btn{display:none}
+html.vfs-on .video.vfs iframe,html.vfs-on .video.vfs #yt{width:100%;height:100%}
+.video.vfs::after{display:none!important}
+.video.vfs .vfs-ui{display:flex;position:absolute;inset:0;flex-direction:column;justify-content:space-between;z-index:5;color:#fff;opacity:0;pointer-events:none;transition:opacity .22s;background:linear-gradient(rgba(0,0,0,.65),transparent 26%,transparent 70%,rgba(0,0,0,.75));padding:max(.75rem,env(safe-area-inset-top)) max(1rem,env(safe-area-inset-right)) max(.75rem,env(safe-area-inset-bottom)) max(1rem,env(safe-area-inset-left))}
+.video.vfs .vfs-ui.show{opacity:1;pointer-events:auto}
+.video.vfs:not(.rot) .vfs-ui:not(.show){pointer-events:auto}
+.video.vfs .vfs-ui:not(.show){pointer-events:auto}
+.vfs-top{display:flex;align-items:center;gap:.75rem}
+.vfs-title{flex:1;min-width:0}
+.vfs-title b{display:block;font-size:.9375rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vfs-title small{display:block;font-size:.75rem;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vfs-i{width:2.75rem;height:2.75rem;border-radius:50%;background:rgba(255,255,255,.16);color:#fff;display:grid;place-items:center;position:relative;flex:none}
+.vfs-i svg{width:1.375rem;height:1.375rem;fill:currentColor;stroke:none}
+.vfs-top .vfs-i svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.vfs-i.big{width:3.5rem;height:3.5rem}
+.vfs-i.big svg{width:1.75rem;height:1.75rem}
+.vfs-i.xl{width:4.75rem;height:4.75rem;background:var(--accent)}
+.vfs-i.xl svg{width:2.25rem;height:2.25rem}
+.vfs-i .skip{fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;width:2.25rem;height:2.25rem}
+.vfs-i .skn{position:absolute;left:50%;top:50%;transform:translate(-50%,-38%);font-size:.625rem;font-weight:800}
+.vfs-mid{display:flex;align-items:center;justify-content:center;gap:2.25rem}
+.vfs-bot{display:flex;align-items:center;gap:.75rem;font-size:.75rem;font-variant-numeric:tabular-nums}
+.vfs-bot input{flex:1}
+.vfs-hint{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);padding:.5rem 1rem;border-radius:999px;background:rgba(0,0,0,.65);font-weight:700;opacity:0;transition:opacity .15s;pointer-events:none}
+.vfs-hint.on{opacity:1}
+html.vfs-on body{overflow:hidden}

@@ -535,7 +535,7 @@ function closeView() { state.view = null; state.confirmDel = false; render(); }
 let navPushed = 0, navSilent = false;
 const navLayers = () => {
   const full = document.documentElement.dataset.layout !== 'desktop' && !document.documentElement.classList.contains('tv');
-  return (!$('#menu').hidden ? 1 : 0) + (!$('#karaoke').hidden ? 1 : 0) + (!$('#queueSheet').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab === 'search' && state.sMode === 'results' ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
+  return (document.documentElement.classList.contains('vfs-on') ? 1 : 0) + (!$('#menu').hidden ? 1 : 0) + (!$('#karaoke').hidden ? 1 : 0) + (!$('#queueSheet').hidden ? 1 : 0) + (full && $('#player').classList.contains('open') ? 1 : 0) + (state.view ? 1 : 0) + (state.tab === 'search' && state.sMode === 'results' ? 1 : 0) + (state.tab !== 'home' ? 1 : 0);
 };
 function navSync() {
   const n = navLayers();
@@ -547,7 +547,8 @@ function navSync() {
 window.addEventListener('popstate', () => {
   if (navSilent) { navSilent = false; return; }
   if (navPushed > 0) navPushed--;
-  if (!$('#menu').hidden) closeMenu();
+  if (document.documentElement.classList.contains('vfs-on') && typeof vfsExit === 'function') vfsExit(true);
+  else if (!$('#menu').hidden) closeMenu();
   else if (!$('#karaoke').hidden) closeKaraoke();
   else if (!$('#queueSheet').hidden) closeQueue();
   else if ($('#player').classList.contains('open') && document.documentElement.dataset.layout !== 'desktop') $('#player').classList.remove('open');
@@ -2178,7 +2179,7 @@ if (state.tab === 'home' || state.tab === 'library') loadCharts();
 /* ---------- Versi & pembaruan ----------
    Versi aplikasi dicek ke /version.json (tanpa cache). Kalau beda dengan yang berjalan, cache & service worker dibersihkan lalu
    aplikasi dimuat ulang otomatis. Tombol "Perbarui aplikasi" di Pustaka melakukan hal yang sama secara manual. */
-const APP_V = '2026.11.01-7';
+const APP_V = '2026.11.01-8';
 async function appUpdate(manual) {
   try {
     let latest = APP_V;
