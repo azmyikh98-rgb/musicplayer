@@ -242,7 +242,9 @@ function homeHTML() {
   const greet = h < 11 ? 'Pagi, yuk gas!' : h < 15 ? 'Siang, lagi ngapain?' : h < 18 ? 'Sore, waktunya santai' : 'Malam, mau muter apa?';
   const fresh = !state.resume && !state.recent.length && !state.fav.length && !state.artists.length;
   const dateLbl = new Date().toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' });
-  let out = `<div class="home"><div class="greet-wrap"><small>${dateLbl}</small><h2 class="greet">${greet}</h2></div>`;
+  const pfBtn = typeof profileAvatarBtn === 'function' ? profileAvatarBtn() : '';
+  const greetT = typeof pfGreet === 'function' ? pfGreet(h < 11 ? 'Pagi' : h < 15 ? 'Siang' : h < 18 ? 'Sore' : 'Malam', greet) : greet;
+  let out = `<div class="home"><div class="greet-wrap"><div class="gw-t"><small>${dateLbl}</small><h2 class="greet">${greetT}</h2></div>${pfBtn}</div>`;
 
   // 1. lanjutkan, hal paling sering dibutuhkan
   if (state.resume && state.resume.track) {
@@ -2179,7 +2181,7 @@ if (state.tab === 'home' || state.tab === 'library') loadCharts();
 /* ---------- Versi & pembaruan ----------
    Versi aplikasi dicek ke /version.json (tanpa cache). Kalau beda dengan yang berjalan, cache & service worker dibersihkan lalu
    aplikasi dimuat ulang otomatis. Tombol "Perbarui aplikasi" di Pustaka melakukan hal yang sama secara manual. */
-const APP_V = '2026.11.01-9';
+const APP_V = '2026.11.01-10';
 async function appUpdate(manual) {
   try {
     let latest = APP_V;

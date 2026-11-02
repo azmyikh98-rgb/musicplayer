@@ -411,7 +411,7 @@ $('#kLines').addEventListener('click', (e) => { if (e.target.closest('[data-kret
    5. CADANGAN & PINDAH PERANGKAT
    ===================================================================== */
 function backupData() {
-  return { app: 'nada', v: 1, at: new Date().toISOString(), fav: state.fav, recent: state.recent, playlists: state.playlists, artists: state.artists, history: state.history, stats: NF.stats, lyrOffs };
+  return { app: 'nada', v: 1, at: new Date().toISOString(), fav: state.fav, recent: state.recent, playlists: state.playlists, artists: state.artists, history: state.history, stats: NF.stats, lyrOffs, profile: PF.p, lyrTxt, settings: { pview: state.pview, official: state.official, autoplay: NF.autoplay, podRate: PD.rate } };
 }
 const okTrack = (t) => t && typeof t.id === 'string' && /^[\w-]{11}$/.test(t.id);
 const cleanTracks = (a) => (Array.isArray(a) ? a.filter(okTrack).map((t) => ({ id: t.id, title: String(t.title || '').slice(0, 160), artist: String(t.artist || '').slice(0, 100), thumb: t.thumb && /^https:\/\/i\.ytimg\.com\//.test(t.thumb) ? t.thumb : thumb(t.id) })) : []);
@@ -425,6 +425,9 @@ function parseBackup(text) {
     history: (Array.isArray(o.history) ? o.history : []).filter((x) => typeof x === 'string').slice(0, 30),
     stats: o.stats && typeof o.stats.months === 'object' ? o.stats : { v: 1, months: {} },
     lyrOffs: o.lyrOffs && typeof o.lyrOffs === 'object' ? o.lyrOffs : {},
+    lyrTxt: o.lyrTxt && typeof o.lyrTxt === 'object' ? o.lyrTxt : {},
+    profile: o.profile && typeof o.profile === 'object' ? { name: String(o.profile.name || '').slice(0, 24), color: Math.max(0, Math.min(PF_COLORS.length - 1, +o.profile.color || 0)), since: /^\d{4}-\d\d-\d\d$/.test(o.profile.since || '') ? o.profile.since : '' } : null,
+    settings: o.settings && typeof o.settings === 'object' ? o.settings : null,
   };
 }
 function backupSummary(d) {
@@ -436,6 +439,14 @@ function applyBackup(inc, replace) {
   if (replace) {
     state.fav = inc.fav; state.recent = inc.recent.slice(0, 50); state.playlists = inc.playlists; state.artists = inc.artists; state.history = inc.history;
     NF.stats = inc.stats; Object.keys(lyrOffs).forEach((k) => delete lyrOffs[k]); Object.assign(lyrOffs, inc.lyrOffs);
+    Object.keys(lyrTxt).forEach((k) => delete lyrTxt[k]); Object.assign(lyrTxt, inc.lyrTxt);
+    if (inc.profile) { PF.p = inc.profile; PF.p.since = PF.p.since || ''; pfSince(); }
+    const S = inc.settings; if (S) {
+      if (S.pview === 'video' || S.pview === 'lyrics') { state.pview = S.pview; store.set('pview', S.pview); }
+      if (typeof S.official === 'boolean') { state.official = S.official; store.set('official', S.official); }
+      if (typeof S.autoplay === 'boolean') { NF.autoplay = S.autoplay; store.set('autoplay', S.autoplay); }
+      if ([1, 1.25, 1.5, 2].includes(+S.podRate)) { PD.rate = +S.podRate; store.set('podRate', PD.rate); }
+    }
   } else {
     state.fav = un(state.fav, inc.fav, (t) => t.id);
     state.recent = un(state.recent, inc.recent, (t) => t.id).slice(0, 50);
@@ -448,9 +459,11 @@ function applyBackup(inc, replace) {
     // statistik: ambil bulan dengan data lebih banyak (aman kalau cadangan yang sama diimpor dua kali)
     for (const [k, m] of Object.entries(inc.stats.months || {})) { const cur = NF.stats.months[k]; if (!cur || (m.sec || 0) > (cur.sec || 0)) NF.stats.months[k] = m; }
     Object.keys(inc.lyrOffs).forEach((k) => { if (!(k in lyrOffs)) lyrOffs[k] = inc.lyrOffs[k]; });
+    Object.keys(inc.lyrTxt).forEach((k) => { if (!(k in lyrTxt)) lyrTxt[k] = inc.lyrTxt[k]; });
+    if (inc.profile && !PF.p.name && inc.profile.name) { PF.p.name = inc.profile.name; PF.p.color = inc.profile.color; }
   }
   store.set('fav', state.fav); store.set('recent', state.recent); store.set('playlists', state.playlists);
-  store.set('artists', state.artists); store.set('history', state.history); store.set('nada.stats', NF.stats); store.set('lyrOffs', lyrOffs);
+  store.set('artists', state.artists); store.set('history', state.history); store.set('nada.stats', NF.stats); store.set('lyrOffs', lyrOffs); store.set('lyrTxt', lyrTxt); pfSave();
   NF.mix = null; store.set('nada.mix', null); NF.card = { blob: null, busy: false, key: '' };
 }
 function backupMenuHTML(mode) {
@@ -535,6 +548,7 @@ async function backupAct(a) {
    ===================================================================== */
 function featTracks(ctx) {
   if (ctx === 'recap') return recapData().tracks;
+  if (ctx === 'profile') return [];
   if (ctx.startsWith('mix:')) { const m = mixById(ctx.slice(4)); return m ? m.tracks : []; }
   if (typeof podTracks === 'function') { const r = podTracks(ctx); if (r) return r; }
   return null;
@@ -543,16 +557,19 @@ function featView(ctx) {
   if (ctx === 'recap') return recapViewHTML();
   if (ctx.startsWith('mix:')) return mixViewHTML(ctx.slice(4));
   if (ctx.startsWith('pod:') && typeof podViewHTML === 'function') return podViewHTML(ctx.slice(4));
+  if (ctx === 'profile' && typeof profileViewHTML === 'function') return profileViewHTML();
   return '';
 }
 function featViewMeta(ctx) {
   if (ctx === 'recap') return { kind: 'Ringkasan', title: 'Nada Recap' };
+  if (ctx === 'profile') return { kind: 'Akun lokal', title: 'Profil' };
   if (ctx.startsWith('mix:')) { const m = mixById(ctx.slice(4)); return { kind: 'Mix Untukmu', title: m ? m.name : 'Mix' }; }
   if (ctx.startsWith('pod:') && typeof podTopic === 'function') { const T = podTopic(ctx.slice(4)); return { kind: 'Podcast', title: T ? T[2] : 'Podcast' }; }
   return null;
 }
 function featLibTiles(lib) {
   return '<div class="lib-h">Kamu</div>'
+    + lib('data-open="profile"', FI.spark, false, 'Profil & pengaturan', 'Nama, avatar, dan preferensi pemutaran')
     + lib('data-open="recap"', FI.recap, false, 'Nada Recap', 'Ringkasan dengar musikmu')
     + lib('data-backup', FI.backup, false, 'Cadangan & pindah data', 'Simpan atau pindah ke perangkat lain')
     + lib('data-update', FI.backup, false, 'Perbarui aplikasi', 'Versi ' + APP_V + ' · ketuk untuk memuat ulang versi terbaru');
