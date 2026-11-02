@@ -105,7 +105,10 @@ function podViewHTML(topic) {
 }
 
 /* --- pemutar mode podcast --- */
-const skipIcon = (n, dir) => `<svg viewBox="0 0 24 24" class="skip"><path d="${dir === 'back' ? 'M12 5a7 7 0 1 1-6.7 9M12 5V2L8 6l4 4V7' : 'M12 5a7 7 0 1 0 6.7 9M12 5V2l4 4-4 4V7'}"/></svg><span class="skn">${n}</span>`;
+const SKIP_BACK = 'M12 5V1L7 6l5 5V7c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6H4c0 4.4 3.6 8 8 8s8-3.6 8-8-3.6-8-8-8z';
+const SKIP_FWD = 'M12 5V1l5 5-5 5V7c-3.3 0-6 2.7-6 6s2.7 6 6 6 6-2.7 6-6h2c0 4.4-3.6 8-8 8s-8-3.6-8-8 3.6-8 8-8z';
+/* panah melingkar + angka detik di tengah; gaya ditulis inline supaya tidak ditimpa CSS tombol */
+const skipIcon = (n, dir) => `<svg viewBox="0 0 24 24" class="skip" style="fill:currentColor;stroke:none"><path d="${dir === 'back' ? SKIP_BACK : SKIP_FWD}"/><text x="12" y="16.1" text-anchor="middle" style="font:800 7.6px -apple-system,system-ui,sans-serif;fill:currentColor;stroke:none">${n}</text></svg>`;
 const isPod = () => { const t = current(); return !!(t && t.pod); };
 let podOrig = null;
 function podSync() {
