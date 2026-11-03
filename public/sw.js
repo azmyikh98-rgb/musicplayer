@@ -1,4 +1,4 @@
-const CACHE = 'nada-v52';
+const CACHE = 'nada-v53';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/features.js', '/podcast.js', '/fullscreen.js', '/profile.js', '/version.json', '/qr.js', '/story.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
@@ -17,7 +17,7 @@ self.addEventListener('fetch', (e) => {
   if (req.method !== 'GET' || url.origin !== location.origin || url.pathname.startsWith('/api/') || url.pathname.startsWith('/s/')) return;
   // Network-first supaya update langsung terlihat, cache sebagai cadangan offline
   e.respondWith(
-    fetch(req).then((res) => {
+    fetch(req, { cache: 'no-cache' }).then((res) => {
       const copy = res.clone();
       caches.open(CACHE).then((c) => c.put(req, copy));
       return res;
