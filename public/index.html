@@ -38,37 +38,54 @@
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <style id="splash-css">
 html.nosplash #splash{display:none}
-#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;background:#0e0e13;overflow:hidden;transition:opacity .5s ease,transform .5s ease;color:#f3f3f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-#splash.out{opacity:0;transform:scale(1.04);pointer-events:none}
-#splash .glow{position:absolute;width:140vmax;height:140vmax;left:50%;top:42%;transform:translate(-50%,-50%);background:radial-gradient(closest-side,rgba(255,79,109,.22),rgba(255,154,86,.08) 45%,transparent 70%);animation:sp-breathe 3.2s ease-in-out infinite}
-#splash .mark{position:relative;width:7rem;height:7rem;display:grid;place-items:center;animation:sp-pop .7s cubic-bezier(.2,1.3,.4,1) both}
-#splash .mark svg{position:relative;width:100%;height:100%;filter:drop-shadow(0 .75rem 2rem rgba(255,79,109,.45))}
-#splash .ring{position:absolute;inset:0;border-radius:50%;border:.125rem solid rgba(255,107,100,.55);opacity:0;animation:sp-ring 2.4s ease-out infinite}
-#splash .ring:nth-child(2){animation-delay:.8s}
-#splash .ring:nth-child(3){animation-delay:1.6s}
-#splash h1{margin:0;font-size:2.25rem;font-weight:800;letter-spacing:-.02em;background:linear-gradient(135deg,#ff4f6d,#ff9a56);-webkit-background-clip:text;background-clip:text;color:transparent;animation:sp-up .6s .25s ease both}
-#splash p{margin:-1rem 0 0;font-size:.9375rem;color:#9a9aad;animation:sp-up .6s .45s ease both}
-#splash .eq{display:flex;align-items:flex-end;gap:.25rem;height:1.25rem;margin-top:.75rem;animation:sp-up .6s .6s ease both}
-#splash .eq i{display:block;width:.25rem;height:100%;border-radius:.125rem;background:linear-gradient(#ff4f6d,#ff9a56);transform-origin:bottom;animation:sp-eq 1s ease-in-out infinite}
-#splash .eq i:nth-child(2){animation-delay:.15s}#splash .eq i:nth-child(3){animation-delay:.3s}#splash .eq i:nth-child(4){animation-delay:.45s}#splash .eq i:nth-child(5){animation-delay:.6s}
-@keyframes sp-pop{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
-@keyframes sp-up{from{opacity:0;transform:translateY(.75rem)}to{opacity:1;transform:none}}
-@keyframes sp-ring{0%{opacity:.7;transform:scale(.95)}100%{opacity:0;transform:scale(2.3)}}
-@keyframes sp-eq{0%,100%{transform:scaleY(.25)}50%{transform:scaleY(1)}}
-@keyframes sp-breathe{0%,100%{opacity:.75}50%{opacity:1}}
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0b0b10;overflow:hidden;transition:opacity .55s ease,transform .55s ease;color:#f3f3f7;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#splash.out{opacity:0;transform:scale(1.05);pointer-events:none}
+#splash .aur{position:absolute;border-radius:50%;filter:blur(2.5rem);will-change:transform}
+#splash .a1{width:90vmax;height:90vmax;left:-35vmax;top:-30vmax;background:radial-gradient(closest-side,rgba(255,79,109,.34),transparent 72%);animation:sp-d1 9s ease-in-out infinite}
+#splash .a2{width:95vmax;height:95vmax;right:-45vmax;bottom:-40vmax;background:radial-gradient(closest-side,rgba(139,92,246,.30),transparent 72%);animation:sp-d2 11s ease-in-out infinite}
+#splash .a3{width:70vmax;height:70vmax;left:50%;top:44%;margin:-35vmax 0 0 -35vmax;background:radial-gradient(closest-side,rgba(255,154,86,.20),transparent 70%);animation:sp-breathe 3.4s ease-in-out infinite}
+#splash .dots{position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.07) 1px,transparent 1.2px);background-size:1.75rem 1.75rem;-webkit-mask-image:radial-gradient(closest-side at 50% 44%,#000 0,transparent 75%);mask-image:radial-gradient(closest-side at 50% 44%,#000 0,transparent 75%)}
+#splash .stage{position:relative;width:15rem;height:15rem;display:grid;place-items:center;margin-top:-4rem;animation:sp-pop .8s cubic-bezier(.2,1.2,.4,1) both}
+#splash .disc{position:absolute;inset:0;border-radius:50%;background:repeating-radial-gradient(circle at 50% 50%,#17171f 0 .125rem,#0c0c11 .125rem .25rem);box-shadow:0 2rem 4rem rgba(0,0,0,.65),0 0 0 .0625rem rgba(255,255,255,.08),0 0 6rem rgba(255,79,109,.28);animation:sp-spin 8s linear infinite}
+#splash .disc::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 20deg,transparent 0 6%,rgba(255,255,255,.16) 10%,transparent 16% 56%,rgba(255,255,255,.11) 60%,transparent 66%)}
+#splash .disc::after{content:"";position:absolute;inset:.5rem;border-radius:50%;border:.0625rem solid rgba(255,255,255,.05)}
+#splash .ring{position:absolute;inset:0;border-radius:50%;border:.125rem solid rgba(255,107,100,.5);opacity:0;animation:sp-ring 2.6s ease-out infinite}
+#splash .ring:nth-child(2){animation-delay:.87s}
+#splash .ring:nth-child(3){animation-delay:1.74s}
+#splash .mark{position:relative;width:6.75rem;height:6.75rem}
+#splash .mark svg{width:100%;height:100%;filter:drop-shadow(0 .5rem 1.25rem rgba(255,79,109,.5))}
+#splash h1{margin:3.25rem 0 0;display:flex;font-size:3.25rem;line-height:1;font-weight:800;letter-spacing:-.03em}
+#splash h1 span{display:block;background:linear-gradient(135deg,#ff4f6d,#ff9a56);-webkit-background-clip:text;background-clip:text;color:transparent;animation:sp-up .6s cubic-bezier(.2,1,.3,1) both}
+#splash h1 span:nth-child(1){animation-delay:.3s}#splash h1 span:nth-child(2){animation-delay:.38s}#splash h1 span:nth-child(3){animation-delay:.46s}#splash h1 span:nth-child(4){animation-delay:.54s}
+#splash p{margin:.875rem 0 0;font-size:.9375rem;letter-spacing:.02em;color:#a3a3b8;animation:sp-up .6s .7s ease both}
+#splash .eq{display:flex;align-items:center;gap:.25rem;height:1.5rem;margin-top:1.5rem;animation:sp-up .6s .85s ease both}
+#splash .eq i{display:block;width:.1875rem;height:100%;border-radius:.125rem;background:linear-gradient(#ff4f6d,#ff9a56);animation:sp-eq 1.1s ease-in-out infinite}
+#splash .eq i:nth-child(2){animation-delay:.1s}#splash .eq i:nth-child(3){animation-delay:.2s}#splash .eq i:nth-child(4){animation-delay:.3s}#splash .eq i:nth-child(5){animation-delay:.4s}#splash .eq i:nth-child(6){animation-delay:.5s}#splash .eq i:nth-child(7){animation-delay:.6s}#splash .eq i:nth-child(8){animation-delay:.7s}#splash .eq i:nth-child(9){animation-delay:.8s}
+#splash .bar{position:absolute;left:50%;bottom:calc(3rem + env(safe-area-inset-bottom,0px));width:7rem;height:.1875rem;margin-left:-3.5rem;border-radius:.125rem;background:rgba(255,255,255,.1);overflow:hidden;animation:sp-up .6s 1s ease both}
+#splash .bar i{display:block;height:100%;width:100%;border-radius:inherit;background:linear-gradient(90deg,#ff4f6d,#ff9a56);transform-origin:left;animation:sp-load 1.6s .9s cubic-bezier(.4,0,.2,1) both}
+@keyframes sp-pop{from{opacity:0;transform:scale(.7)}to{opacity:1;transform:scale(1)}}
+@keyframes sp-up{from{opacity:0;transform:translateY(.9rem)}to{opacity:1;transform:none}}
+@keyframes sp-ring{0%{opacity:.65;transform:scale(1)}100%{opacity:0;transform:scale(1.9)}}
+@keyframes sp-eq{0%,100%{transform:scaleY(.2)}50%{transform:scaleY(1)}}
+@keyframes sp-breathe{0%,100%{opacity:.7}50%{opacity:1}}
+@keyframes sp-spin{to{transform:rotate(360deg)}}
+@keyframes sp-load{from{transform:scaleX(.04)}to{transform:scaleX(1)}}
+@keyframes sp-d1{0%,100%{transform:translate(0,0)}50%{transform:translate(8vmax,10vmax)}}
+@keyframes sp-d2{0%,100%{transform:translate(0,0)}50%{transform:translate(-10vmax,-8vmax)}}
 @media (prefers-reduced-motion:reduce){#splash *{animation-duration:.01s!important;animation-iteration-count:1!important}}
 </style>
 <link rel="stylesheet" href="/style.css">
 </head>
 <body>
 <div id="splash" role="status" aria-label="Memuat Nada">
-  <div class="glow"></div>
-  <div class="mark"><i class="ring"></i><i class="ring"></i><i class="ring"></i>
-    <svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="spg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4f6d"/><stop offset="1" stop-color="#ff9a56"/></linearGradient></defs><circle cx="256" cy="256" r="220" fill="url(#spg)"/><path d="M215 180v152a44 44 0 1 1-24-39V204l112-28v112a44 44 0 1 1-24-39V150z" fill="#0e0e13" transform="translate(24 14) scale(.92)"/></svg>
+  <div class="aur a1"></div><div class="aur a2"></div><div class="aur a3"></div><div class="dots"></div>
+  <div class="stage"><i class="ring"></i><i class="ring"></i><i class="ring"></i><div class="disc"></div>
+    <div class="mark"><svg viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="spg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff4f6d"/><stop offset="1" stop-color="#ff9a56"/></linearGradient></defs><circle cx="256" cy="256" r="236" fill="url(#spg)"/><path d="M215 180v152a44 44 0 1 1-24-39V204l112-28v112a44 44 0 1 1-24-39V150z" fill="#0e0e13" transform="translate(24 14) scale(.92)"/></svg></div>
   </div>
-  <h1>Nada</h1>
+  <h1 aria-label="Nada"><span>N</span><span>a</span><span>d</span><span>a</span></h1>
   <p>Musik apa aja, kapan aja.</p>
-  <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="bar" aria-hidden="true"><i></i></div>
 </div>
 <div id="app">
   <header class="top">
@@ -199,7 +216,7 @@ html.nosplash #splash{display:none}
   var t0 = Date.now(), done = false;
   function hide() {
     if (done) return; done = true;
-    setTimeout(function () { s.classList.add('out'); setTimeout(function () { s.remove(); }, 550); }, Math.max(0, 1500 - (Date.now() - t0)));
+    setTimeout(function () { s.classList.add('out'); setTimeout(function () { s.remove(); }, 550); }, Math.max(0, 2000 - (Date.now() - t0)));
   }
   if (document.readyState === 'complete') hide(); else addEventListener('load', hide);
   setTimeout(hide, 4500);
