@@ -1,4 +1,4 @@
-const CACHE = 'nada-v54';
+const CACHE = 'nada-v55';
 const SHELL = ['/', '/index.html', '/style.css', '/app.js', '/features.js', '/podcast.js', '/fullscreen.js', '/profile.js', '/version.json', '/qr.js', '/story.js', '/manifest.webmanifest', '/icons/icon.svg', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (e) => {
